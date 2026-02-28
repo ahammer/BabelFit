@@ -76,7 +76,7 @@ class JsonDocument private constructor(val root: JsonElement) {
 
     fun setAtPath(path: String, value: JsonElement): JsonDocument {
         val segments = parsePath(path)
-        require(segments.isNotEmpty()) { "Cannot set root directly" }
+        if (segments.isEmpty()) return JsonDocument(value)
         return JsonDocument(setRecursive(root, segments, 0, value))
     }
 

@@ -15,6 +15,7 @@ import ca.adamhammer.babelfit.samples.jsoneditor.api.JsonEditorListener
 import ca.adamhammer.babelfit.samples.jsoneditor.api.JsonEditorSession
 import ca.adamhammer.babelfit.samples.jsoneditor.model.JsonDocument
 import com.openai.models.ChatModel
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -53,6 +54,21 @@ class ComposeEditorController(private val uiScope: CoroutineScope) : JsonEditorL
     val usageTracker = UsageTracker()
 
     private var session: JsonEditorSession? = null
+
+    private var pendingAsk: CompletableDeferred<String>? = null
+
+    val isAskPending: Boolean get() = pendingAsk != null
+
+    private val askHandler: suspend (String) -> String = { question ->
+        chatEntries.add(ChatEntry.AskQuestion(question))
+        val deferred = CompletableDeferred<String>()
+        pendingAsk = deferred
+        isBusy = false
+        val answer = deferred.await()
+        isBusy = true
+        pendingAsk = null
+        answer
+    }
 
     // ── Vendor / model switching ────────────────────────────────────────
 
@@ -116,8 +132,18 @@ class ComposeEditorController(private val uiScope: CoroutineScope) : JsonEditorL
 
     fun sendMessage() {
         val text = inputText.trim()
-        if (text.isEmpty() || isBusy) return
+        if (text.isEmpty()) return
         inputText = ""
+
+        // If the agent asked a question, route the answer back
+        val ask = pendingAsk
+        if (ask != null) {
+            chatEntries.add(ChatEntry.UserMessage(text))
+            ask.complete(text)
+            return
+        }
+
+        if (isBusy) return
         chatEntries.add(ChatEntry.UserMessage(text))
 
         val s = session ?: run {
@@ -147,7 +173,15 @@ class ComposeEditorController(private val uiScope: CoroutineScope) : JsonEditorL
     }
 
     override fun onAgentResponse(response: String) {
-        chatEntries.add(ChatEntry.AgentResponse(response))
+        // Structured responses handled via onExplain; no freeform text expected
+    }
+
+    override fun onExplain(message: String) {
+        chatEntries.add(ChatEntry.Explain(message))
+    }
+
+    override fun onAskStarted(question: String) {
+        // Handled by askHandler lambda — the ChatEntry is added there
     }
 
     override fun onError(error: String) {
@@ -164,7 +198,8 @@ class ComposeEditorController(private val uiScope: CoroutineScope) : JsonEditorL
             listener = this,
             filePath = path,
             autoSave = filePath != null,
-            requestListeners = listOf(usageTracker)
+            requestListeners = listOf(usageTracker),
+            askHandler = askHandler
         )
         // Restore the in-memory document — the session constructor may have
         // loaded a stale copy from disk or created a fresh empty doc.

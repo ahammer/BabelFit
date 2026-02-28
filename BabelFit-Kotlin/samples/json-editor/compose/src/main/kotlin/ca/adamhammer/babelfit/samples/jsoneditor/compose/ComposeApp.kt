@@ -43,6 +43,8 @@ private val StringValColor = Color(0xFFC3E88D)    // Green for string values
 private val NumberValColor = Color(0xFFFFCB6B)    // Amber for numbers
 private val BoolValColor = Color(0xFFF78C6C)      // Salmon for booleans
 private val NullValColor = Color(0xFF89DDFF)       // Cyan for null
+private val ExplainColor = Color(0xFF42A5F5)       // Blue for agent explanations
+private val AskColor = Color(0xFFFFCA28)           // Amber for agent questions
 
 private val EditorColors = babelFitDarkColors(
     primary = AgentColor,
@@ -329,6 +331,20 @@ private fun ChatEntryCard(entry: ChatEntry) {
             Text("✗ ${entry.text}", color = ErrorColor, style = MaterialTheme.typography.body2)
         }
 
+        is ChatEntry.Explain -> ColorBorderCard(accentColor = ExplainColor) {
+            Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                AvatarCircle("AI", ExplainColor, size = 24)
+                Text(entry.message, color = BrightText, style = MaterialTheme.typography.body2)
+            }
+        }
+
+        is ChatEntry.AskQuestion -> ColorBorderCard(accentColor = AskColor) {
+            Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                AvatarCircle("?", AskColor, size = 24)
+                Text(entry.question, color = BrightText, style = MaterialTheme.typography.body2)
+            }
+        }
+
         is ChatEntry.SystemMessage -> ColorBorderCard(accentColor = SystemMsgColor, alpha = 0.04f) {
             Text(
                 entry.text,
@@ -368,7 +384,11 @@ private fun ChatInput(controller: ComposeEditorController) {
                         true
                     } else false
                 },
-                placeholder = { Text("Ask the AI to edit your JSON…", color = DimText.copy(alpha = 0.5f)) },
+                placeholder = {
+                    val hint = if (controller.isAskPending) "Answer the question…"
+                        else "Ask the AI to edit your JSON…"
+                    Text(hint, color = DimText.copy(alpha = 0.5f))
+                },
                 colors = darkTextFieldColors(),
                 singleLine = true,
                 enabled = !controller.isBusy

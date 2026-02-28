@@ -106,4 +106,58 @@ class JsonToolProviderTest {
         assertEquals(1, calls.size)
         assertEquals("json_set", calls[0].first)
     }
+
+    @Test
+    fun `explain tool fires listener and returns confirmation`() = runTest {
+        val messages = mutableListOf<String>()
+        val listener = object : JsonEditorListener {
+            override fun onExplain(message: String) {
+                messages.add(message)
+            }
+        }
+        val provider = JsonToolProvider(
+            docProvider = { JsonDocument.empty() },
+            docUpdater = {},
+            listener = listener
+        )
+        val call = ToolCall(id = "1", toolName = "explain", arguments = """{"message": "Set /name to Alice"}""")
+        val result = provider.callTool(call)
+        assertFalse(result.isError)
+        assertEquals("Displayed to user", result.content)
+        assertEquals(1, messages.size)
+        assertEquals("Set /name to Alice", messages[0])
+    }
+
+    @Test
+    fun `ask tool suspends until answer is provided`() = runTest {
+        val questions = mutableListOf<String>()
+        val listener = object : JsonEditorListener {
+            override fun onAskStarted(question: String) {
+                questions.add(question)
+            }
+        }
+        val provider = JsonToolProvider(
+            docProvider = { JsonDocument.empty() },
+            docUpdater = {},
+            listener = listener,
+            askHandler = { "yes, proceed" }
+        )
+        val call = ToolCall(id = "1", toolName = "ask", arguments = """{"question": "Delete all entries?"}""")
+        val result = provider.callTool(call)
+        assertFalse(result.isError)
+        assertEquals("yes, proceed", result.content)
+        assertEquals(1, questions.size)
+        assertEquals("Delete all entries?", questions[0])
+    }
+
+    @Test
+    fun `listTools includes explain and ask`() {
+        val provider = JsonToolProvider(
+            docProvider = { JsonDocument.empty() },
+            docUpdater = {}
+        )
+        val names = provider.listTools().map { it.name }
+        assertTrue("explain" in names, "Expected 'explain' tool in: $names")
+        assertTrue("ask" in names, "Expected 'ask' tool in: $names")
+    }
 }

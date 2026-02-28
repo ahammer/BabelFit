@@ -3,26 +3,51 @@ package ca.adamhammer.babelfit.samples.jsoneditor
 import ca.adamhammer.babelfit.annotations.AiOperation
 import ca.adamhammer.babelfit.annotations.AiParameter
 import ca.adamhammer.babelfit.annotations.AiResponse
-import ca.adamhammer.babelfit.annotations.Memorize
+import kotlinx.serialization.Serializable
 import java.util.concurrent.Future
+
+@Serializable
+enum class ActionType { SET, DELETE, MOVE, EXPLAIN, ASK }
+
+@Serializable
+data class EditorAction(
+    val type: ActionType,
+    val path: String = "",
+    val value: String = "",
+    val from: String = "",
+    val to: String = "",
+    val message: String = ""
+)
+
+@Serializable
+data class JsonEditorResponse(
+    val actions: List<EditorAction>
+)
 
 interface JsonEditorAPI {
 
     @AiOperation(
-        summary = "Respond to user",
-        description = """You are a JSON document editor assistant. The user will describe changes they want 
-            to make to a JSON document in natural language. Use the provided tools to read, modify, and 
-            inspect the document. After making changes, respond with a clear summary of what you did. 
-            If the user asks a question about the document, inspect it with the tools and answer.
-            Always confirm what was changed and show the affected paths.
-            IMPORTANT: If a tool call returns an error, report the error to the user honestly. 
-            Never claim success when a tool failed. Always verify changes by reading back the path 
-            after setting it."""
+        summary = "Respond to user with structured actions",
+        description = """You are a JSON document editor. Respond ONLY with a structured list of actions.
+
+            ACTION TYPES:
+            - SET: Set a JSON value. Requires 'path' (JSON Pointer) and 'value' (JSON-encoded string).
+            - DELETE: Remove a node. Requires 'path'.
+            - MOVE: Move a node. Requires 'from' and 'to' paths.
+            - EXPLAIN: Send a message to the user. Requires 'message'.
+              Use for summaries, answers, confirmations, and error reports.
+            - ASK: Ask a clarifying question. Requires 'message'.
+              Use when you need more information before proceeding.
+
+            RULES:
+            - Every response MUST include at least one EXPLAIN or ASK action.
+            - Batch ALL edits into a single response.
+            - For SET: 'value' must be valid JSON-encoded (strings need inner quotes: '"hello"').
+            - Unused fields should be empty strings."""
     )
-    @AiResponse(description = "A natural-language response summarizing the actions taken or answering the user's question")
-    @Memorize(label = "last-response")
+    @AiResponse(description = "A structured list of actions to execute on the JSON document")
     fun respond(
         @AiParameter(description = "The user's message describing what they want to do with the JSON document")
         userMessage: String
-    ): Future<String>
+    ): Future<JsonEditorResponse>
 }

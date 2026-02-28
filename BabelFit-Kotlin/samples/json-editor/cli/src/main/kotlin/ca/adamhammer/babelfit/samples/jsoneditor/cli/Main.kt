@@ -29,9 +29,18 @@ fun main(args: Array<String>) = runBlocking {
     val session = JsonEditorSession(
         apiAdapter = adapter,
         listener = listener,
-        filePath = filePath
+        filePath = filePath,
+        askHandler = { question ->
+            println("\n  [?] $question")
+            print("  > ")
+            readlnOrNull()?.trim() ?: ""
+        }
     )
 
+    replLoop(session)
+}
+
+private suspend fun replLoop(session: JsonEditorSession) {
     while (true) {
         print("\n> ")
         val input = readlnOrNull()?.trim() ?: break
@@ -51,8 +60,7 @@ fun main(args: Array<String>) = runBlocking {
             }
             "" -> continue
             else -> {
-                val response = session.chat(input)
-                println("\n$response")
+                session.chat(input)
             }
         }
     }
@@ -75,7 +83,11 @@ class CliJsonEditorListener : JsonEditorListener {
     }
 
     override fun onAgentResponse(response: String) {
-        // printed by main loop
+        // Structured responses handled via onExplain; no freeform text expected
+    }
+
+    override fun onExplain(message: String) {
+        println("\n  $message")
     }
 
     override fun onError(error: String) {

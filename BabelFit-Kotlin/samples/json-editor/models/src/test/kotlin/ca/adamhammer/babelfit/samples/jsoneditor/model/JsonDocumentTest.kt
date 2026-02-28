@@ -134,11 +134,12 @@ class JsonDocumentTest {
     }
 
     @Test
-    fun `cannot set root directly`() {
+    fun `set root replaces entire document`() {
         val doc = JsonDocument.empty()
-        assertThrows<IllegalArgumentException> {
-            doc.setAtPath("", JsonPrimitive(1))
-        }
+        val newRoot = Json.parseToJsonElement("""{"a": 1, "b": 2}""")
+        val updated = doc.setAtPath("", newRoot)
+        assertEquals(1, updated.getAtPath("/a")?.jsonPrimitive?.int)
+        assertEquals(2, updated.getAtPath("/b")?.jsonPrimitive?.int)
     }
 
     @Test

@@ -7,5 +7,7 @@ interface JsonEditorListener {
     fun onToolCall(toolName: String, args: String, result: String) {}
     fun onDocumentChanged(doc: JsonDocument, path: String, operation: String) {}
     fun onAgentResponse(response: String) {}
+    fun onExplain(message: String) {}
+    fun onAskStarted(question: String) {}
     fun onError(error: String) {}
 }
