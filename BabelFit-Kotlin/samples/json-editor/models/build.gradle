@@ -1,0 +1,16 @@
+plugins {
+    id 'org.jetbrains.kotlin.jvm'
+    id 'org.jetbrains.kotlin.plugin.serialization'
+}
+
+test {
+    useJUnitPlatform()
+}
+
+dependencies {
+    implementation project(':babelfit-core')
+    implementation "org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3"
+
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.10.2'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.10.2'
+}
