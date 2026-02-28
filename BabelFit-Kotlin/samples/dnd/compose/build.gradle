@@ -1,0 +1,29 @@
+plugins {
+    id 'org.jetbrains.kotlin.jvm'
+    id 'org.jetbrains.kotlin.plugin.compose' version '2.0.21'
+    id 'application'
+    id 'org.jetbrains.compose' version '1.7.0'
+}
+
+application {
+    mainClass = 'MainKt'
+}
+
+repositories {
+    google()
+    mavenCentral()
+    maven { url 'https://maven.pkg.jetbrains.space/public/p/compose/dev' }
+}
+
+dependencies {
+    implementation compose.desktop.currentOs
+    implementation compose.material
+    implementation compose.ui
+    implementation project(':babelfit-core')
+    implementation project(':babelfit-openai')
+    implementation project(':babelfit-claude')
+    implementation project(':babelfit-gemini')
+    implementation project(':babelfit-agents')
+    implementation project(':samples-dnd:models')
+    implementation project(':samples-dnd:api')
+}

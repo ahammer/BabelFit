@@ -1,0 +1,98 @@
+package ca.adamhammer.babelfit
+
+import ca.adamhammer.babelfit.adapters.StubAdapter
+import ca.adamhammer.babelfit.context.DefaultContextBuilder
+import ca.adamhammer.babelfit.interfaces.ContextBuilder
+import ca.adamhammer.babelfit.model.PromptContext
+import ca.adamhammer.babelfit.model.BabelFitConfigurationException
+import ca.adamhammer.babelfit.model.BabelFitRequest
+import ca.adamhammer.babelfit.test.*
+import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Test
+
+class BabelFitBuilderTest {
+
+    @Test
+    fun `build without adapter throws BabelFitConfigurationException`() {
+        assertThrows(BabelFitConfigurationException::class.java) {
+            BabelFitBuilder(SimpleTestAPI::class).build()
+        }
+    }
+
+    @Test
+    fun `setAdapterClass with no all-optional constructor throws`() {
+        assertThrows(IllegalArgumentException::class.java) {
+            BabelFitBuilder(SimpleTestAPI::class)
+                .setAdapterClass(NoDefaultConstructorAdapter::class)
+                .build()
+        }
+    }
+
+    @Test
+    fun `setAdapterDirect sets adapter correctly`() {
+        val mock = MockAdapter.scripted(SimpleResult("direct"))
+        val api = BabelFitBuilder(SimpleTestAPI::class)
+            .setAdapterDirect(mock)
+            .build().api
+
+        assertEquals("direct", api.get().get().value)
+    }
+
+    @Test
+    fun `setContextBuilder replaces default`() {
+        val customBuilder = object : ContextBuilder {
+            override fun build(request: BabelFitRequest): PromptContext {
+                return PromptContext(
+                    systemInstructions = "CUSTOM BUILDER",
+                    methodInvocation = "{}",
+                    memory = request.memory
+                )
+            }
+        }
+
+        val mock = MockAdapter.scripted(SimpleResult("custom"))
+        val api = BabelFitBuilder(SimpleTestAPI::class)
+            .setAdapterDirect(mock)
+            .setContextBuilder(customBuilder)
+            .build().api
+
+        api.get().get()
+        mock.lastContext!!.assertSystemInstructionsContain("CUSTOM BUILDER")
+    }
+
+    @Test
+    fun `multiple addInterceptor preserves registration order`() {
+        val mock = MockAdapter.scripted(SimpleResult("ordered"))
+        val api = BabelFitBuilder(SimpleTestAPI::class)
+            .setAdapterDirect(mock)
+            .addInterceptor { ctx -> ctx.copy(systemInstructions = ctx.systemInstructions + " [A]") }
+            .addInterceptor { ctx -> ctx.copy(systemInstructions = ctx.systemInstructions + " [B]") }
+            .addInterceptor { ctx -> ctx.copy(systemInstructions = ctx.systemInstructions + " [C]") }
+            .build().api
+
+        api.get().get()
+        val instructions = mock.lastContext!!.systemInstructions
+        val indexA = instructions.indexOf("[A]")
+        val indexB = instructions.indexOf("[B]")
+        val indexC = instructions.indexOf("[C]")
+        assertTrue(indexA < indexB && indexB < indexC, "Interceptors should run in order: $instructions")
+    }
+
+    @Test
+    fun `building multiple instances from same builder produces independent instances`() {
+        val mock = MockAdapter.scripted(SimpleResult("v1"), SimpleResult("v2"))
+        val builder = BabelFitBuilder(SimpleTestAPI::class).setAdapterDirect(mock)
+
+        val instance1 = builder.build()
+        val instance2 = builder.build()
+
+        assertNotSame(instance1.api, instance2.api)
+    }
+}
+
+// Test helper: an adapter class with required constructor params
+class NoDefaultConstructorAdapter(@Suppress("unused") required: String) : ca.adamhammer.babelfit.interfaces.ApiAdapter {
+    override suspend fun <R : Any> handleRequest(context: PromptContext, resultClass: kotlin.reflect.KClass<R>): R {
+        throw UnsupportedOperationException()
+    }
+}

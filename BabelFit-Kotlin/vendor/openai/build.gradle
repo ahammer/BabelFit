@@ -1,0 +1,76 @@
+plugins {
+    id 'java-library'
+    id 'org.jetbrains.kotlin.jvm'
+    id 'org.jetbrains.kotlin.plugin.serialization'
+    id 'maven-publish'
+}
+
+test {
+    useJUnitPlatform {
+        if (!project.hasProperty('liveTests')) {
+            excludeTags 'live'
+        }
+    }
+    testLogging {
+        outputs.upToDateWhen { false }
+        showStandardStreams = true
+    }
+}
+
+dependencies {
+    api project(':babelfit-core')
+    api "com.openai:openai-java:0.22.0"
+    testImplementation project(':babelfit-test')
+    testImplementation project(':babelfit-agents')
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.10.2'
+    testImplementation "io.mockk:mockk:1.13.10"
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.10.2'
+}
+
+java {
+    withSourcesJar()
+    withJavadocJar()
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            from components.java
+            artifactId = 'babelfit-openai'
+
+            versionMapping {
+                usage('java-api') { fromResolutionOf('runtimeClasspath') }
+                usage('java-runtime') { fromResolutionResult() }
+            }
+
+            pom {
+                name = 'BabelFit OpenAI'
+                description = 'OpenAI adapter for the BabelFit AI proxy library.'
+                url = 'https://github.com/AdamHammer/BabelFit'
+                licenses {
+                    license {
+                        name = 'MIT License'
+                        url = 'https://opensource.org/licenses/MIT'
+                    }
+                }
+                developers {
+                    developer {
+                        id = 'adamhammer'
+                        name = 'Adam Hammer'
+                    }
+                }
+                scm {
+                    connection = 'scm:git:git://github.com/AdamHammer/BabelFit.git'
+                    developerConnection = 'scm:git:ssh://github.com/AdamHammer/BabelFit.git'
+                    url = 'https://github.com/AdamHammer/BabelFit'
+                }
+            }
+        }
+    }
+    repositories {
+        maven {
+            name = 'local'
+            url = layout.buildDirectory.dir('repo')
+        }
+    }
+}

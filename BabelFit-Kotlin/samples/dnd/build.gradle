@@ -1,0 +1,19 @@
+plugins {
+    id 'application'
+    id 'org.jetbrains.kotlin.jvm'
+    id 'org.jetbrains.kotlin.plugin.serialization'
+}
+
+application {
+    mainClass = 'ca.adamhammer.babelfit.samples.dnd.MainKt'
+}
+
+run {
+    standardInput = System.in
+}
+
+dependencies {
+    implementation project(':babelfit-core')
+    implementation project(':babelfit-openai')
+    implementation project(':babelfit-agents')
+}

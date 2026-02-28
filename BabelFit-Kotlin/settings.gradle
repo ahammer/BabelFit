@@ -1,0 +1,34 @@
+pluginManagement {
+    plugins {
+        id 'org.jetbrains.kotlin.jvm' version '2.0.21'
+        id 'org.jetbrains.kotlin.plugin.serialization' version '2.0.21'
+    }
+}
+rootProject.name = 'babelfit'
+
+// Core
+include 'babelfit-core'
+project(':babelfit-core').projectDir = file('core')
+
+// Vendor adapters
+include 'babelfit-openai'
+project(':babelfit-openai').projectDir = file('vendor/openai')
+include 'babelfit-gemini'
+project(':babelfit-gemini').projectDir = file('vendor/gemini')
+include 'babelfit-claude'
+project(':babelfit-claude').projectDir = file('vendor/claude')
+
+// Extensions
+include 'babelfit-agents'
+project(':babelfit-agents').projectDir = file('ext/agents')
+include 'babelfit-mcp'
+project(':babelfit-mcp').projectDir = file('ext/mcp')
+include 'babelfit-test'
+project(':babelfit-test').projectDir = file('ext/test')
+include 'babelfit-debug'
+project(':babelfit-debug').projectDir = file('ext/debug')
+
+// Samples
+include 'samples-dnd'
+project(':samples-dnd').projectDir = file('samples/dnd')
+include 'samples-dnd:models', 'samples-dnd:api', 'samples-dnd:cli', 'samples-dnd:compose'
