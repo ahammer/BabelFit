@@ -29,10 +29,13 @@ include 'babelfit-debug'
 project(':babelfit-debug').projectDir = file('ext/debug')
 
 // Samples
+include 'samples-example-common'
+project(':samples-example-common').projectDir = file('samples/example-common')
+
 include 'samples-dnd'
 project(':samples-dnd').projectDir = file('samples/dnd')
 include 'samples-dnd:models', 'samples-dnd:api', 'samples-dnd:cli', 'samples-dnd:compose'
 
 include 'samples-json-editor'
 project(':samples-json-editor').projectDir = file('samples/json-editor')
-include 'samples-json-editor:models', 'samples-json-editor:api', 'samples-json-editor:cli'
+include 'samples-json-editor:models', 'samples-json-editor:api', 'samples-json-editor:cli', 'samples-json-editor:compose'

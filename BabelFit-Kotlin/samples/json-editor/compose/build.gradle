@@ -23,8 +23,7 @@ dependencies {
     implementation project(':babelfit-openai')
     implementation project(':babelfit-claude')
     implementation project(':babelfit-gemini')
-    implementation project(':babelfit-agents')
     implementation project(':samples-example-common')
-    implementation project(':samples-dnd:models')
-    implementation project(':samples-dnd:api')
+    implementation project(':samples-json-editor:models')
+    implementation project(':samples-json-editor:api')
 }

@@ -25,6 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ca.adamhammer.babelfit.UsageTracker
+import ca.adamhammer.babelfit.samples.common.*
 import org.jetbrains.skia.Image as SkiaImage
 import java.util.Base64
 
@@ -37,30 +38,15 @@ private val WorldBuildColor = Color(0xFF78909C)  // Blue Grey for world building
 private val DiceColor = Color(0xFFFFA726)        // Orange for dice rolls
 private val WhisperColor = Color(0xFF8D6E63)     // Brown for whispers
 private val SystemColor = Color(0xFF90A4AE)      // Light grey for system
-private val ErrorColor = Color(0xFFEF5350)       // Red for errors
-private val SuccessColor = Color(0xFF66BB6A)     // Green for success
 private val FailColor = Color(0xFFEF5350)        // Red for failure
 private val ThinkingColor = Color(0xFF546E7A)    // Dark grey for thinking
 
-private val DarkSurface = Color(0xFF1E1E2E)
-private val DarkCardColor = Color(0xFF2A2A3D)
-private val DarkCardAlt = Color(0xFF252538)
-private val DimText = Color(0xFFB0B0C0)
-private val BrightText = Color(0xFFE0E0F0)
-
 // ── Dark Theme ──────────────────────────────────────────────────────────────
 
-private val DndDarkColors = darkColors(
-    primary = Color(0xFF7E57C2),
-    primaryVariant = Color(0xFF5C6BC0),
-    secondary = Color(0xFF26A69A),
-    background = DarkSurface,
-    surface = DarkCardColor,
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onBackground = BrightText,
-    onSurface = BrightText,
-    error = ErrorColor
+private val DndDarkColors = babelFitDarkColors(
+    primary = DmColor,
+    primaryVariant = SceneColor,
+    secondary = SummaryColor
 )
 
 // ── Main App Entry ──────────────────────────────────────────────────────────
@@ -719,168 +705,7 @@ private fun SystemMessageCard(entry: TimelineEntry.SystemMessage) {
     }
 }
 
-// ── Floating Usage Pane ─────────────────────────────────────────────────────
-
-@Composable
-private fun UsagePane(tracker: UsageTracker, modifier: Modifier = Modifier) {
-    val stats = tracker.stats()
-    val totalCost = tracker.totalCost()
-    val totalTokens = tracker.totalTokens()
-    val totalRequests = tracker.totalRequests()
-
-    Card(
-        modifier = modifier.widthIn(min = 180.dp, max = 260.dp),
-        backgroundColor = DarkCardAlt.copy(alpha = 0.95f),
-        shape = RoundedCornerShape(10.dp),
-        elevation = 8.dp
-    ) {
-        Column(
-            modifier = Modifier.padding(10.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            Text("Usage", style = MaterialTheme.typography.subtitle2, color = DmColor)
-
-            stats.values.forEach { model ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        model.model.take(20),
-                        style = MaterialTheme.typography.overline,
-                        color = BrightText
-                    )
-                    Text(
-                        "${model.requestCount} req",
-                        style = MaterialTheme.typography.overline,
-                        color = DimText
-                    )
-                }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        "${formatTokens(model.totalInputTokens)}↑ ${formatTokens(model.totalOutputTokens)}↓",
-                        style = MaterialTheme.typography.overline,
-                        color = DimText
-                    )
-                    if (model.totalCost > 0.0) {
-                        Text(
-                            "$${formatCost(model.totalCost)}",
-                            style = MaterialTheme.typography.overline,
-                            color = DiceColor
-                        )
-                    }
-                }
-            }
-
-            if (stats.size > 1 || stats.isNotEmpty()) {
-                Divider(color = DimText.copy(alpha = 0.2f), thickness = 1.dp)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        "$totalRequests req · ${formatTokens(totalTokens)} tok",
-                        style = MaterialTheme.typography.overline,
-                        color = BrightText
-                    )
-                    if (totalCost > 0.0) {
-                        Text(
-                            "$${formatCost(totalCost)}",
-                            style = MaterialTheme.typography.overline,
-                            fontWeight = FontWeight.Bold,
-                            color = DiceColor
-                        )
-                    }
-                }
-            }
-
-            if (stats.isEmpty()) {
-                Text("No usage yet", style = MaterialTheme.typography.overline, color = DimText)
-            }
-        }
-    }
-}
-
-private fun formatTokens(count: Long): String = when {
-    count >= 1_000_000 -> "%.1fM".format(count / 1_000_000.0)
-    count >= 1_000 -> "%.1fK".format(count / 1_000.0)
-    else -> count.toString()
-}
-
-private fun formatCost(cost: Double): String = "%.4f".format(cost)
-
-// ── Reusable Components ─────────────────────────────────────────────────────
-
-@Composable
-private fun ColorBorderCard(
-    accentColor: Color,
-    alpha: Float = 0.08f,
-    content: @Composable () -> Unit
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp).height(IntrinsicSize.Min)
-    ) {
-        // Colored left border
-        Box(
-            modifier = Modifier
-                .width(3.dp)
-                .fillMaxHeight()
-                .background(accentColor)
-        )
-
-        Surface(
-            modifier = Modifier.weight(1f),
-            color = accentColor.copy(alpha = alpha),
-            shape = RoundedCornerShape(topEnd = 8.dp, bottomEnd = 8.dp)
-        ) {
-            Box(modifier = Modifier.padding(10.dp)) { content() }
-        }
-    }
-}
-
-@Composable
-fun AvatarCircle(name: String, color: Color, size: Int = 32) {
-    val initials = name.take(2).uppercase()
-    Box(
-        modifier = Modifier
-            .size(size.dp)
-            .clip(CircleShape)
-            .background(color),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            initials,
-            color = Color.White,
-            fontSize = (size / 2.5).sp,
-            fontWeight = FontWeight.Bold
-        )
-    }
-}
-
-@Composable
-private fun DarkCard(content: @Composable ColumnScope.() -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        backgroundColor = DarkCardColor,
-        shape = RoundedCornerShape(12.dp),
-        elevation = 2.dp
-    ) {
-        Column(modifier = Modifier.padding(14.dp)) { content() }
-    }
-}
-
-@Composable
-private fun darkTextFieldColors() = TextFieldDefaults.outlinedTextFieldColors(
-    textColor = BrightText,
-    cursorColor = DmColor,
-    focusedBorderColor = DmColor,
-    unfocusedBorderColor = DimText.copy(alpha = 0.3f),
-    focusedLabelColor = DmColor,
-    unfocusedLabelColor = DimText.copy(alpha = 0.5f)
-)
+// ── Utilities ────────────────────────────────────────────────────────────────
 
 private fun decodeBase64(base64Data: String): ImageBitmap? {
     return try {
@@ -888,78 +713,5 @@ private fun decodeBase64(base64Data: String): ImageBitmap? {
         SkiaImage.makeFromEncoded(bytes).toComposeImageBitmap()
     } catch (_: Exception) {
         null
-    }
-}
-
-// ── Vendor / Model Picker Components ────────────────────────────────────────
-
-@Composable
-private fun VendorSelector(
-    vendors: List<Vendor>,
-    selected: Vendor,
-    onSelect: (Vendor) -> Unit
-) {
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        vendors.forEach { vendor ->
-            val available = vendor.isAvailable()
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                RadioButton(
-                    selected = selected == vendor,
-                    onClick = { if (available) onSelect(vendor) },
-                    enabled = available,
-                    colors = RadioButtonDefaults.colors(selectedColor = DmColor)
-                )
-                Column {
-                    Text(
-                        vendor.displayName,
-                        color = if (available) DimText else DimText.copy(alpha = 0.3f)
-                    )
-                    if (!available) {
-                        Text(
-                            vendor.envVarName + " not set",
-                            style = MaterialTheme.typography.overline,
-                            color = ErrorColor.copy(alpha = 0.6f)
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ModelDropdown(
-    models: List<ModelOption>,
-    selected: String,
-    onSelect: (String) -> Unit
-) {
-    var expanded by remember { mutableStateOf(false) }
-    val selectedLabel = models.find { it.id == selected }?.displayName ?: selected
-
-    Box {
-        OutlinedButton(
-            onClick = { expanded = true },
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = BrightText)
-        ) {
-            Text(selectedLabel)
-            Spacer(Modifier.width(4.dp))
-            Text("▾", color = DimText)
-        }
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false }
-        ) {
-            models.forEach { model ->
-                DropdownMenuItem(onClick = {
-                    onSelect(model.id)
-                    expanded = false
-                }) {
-                    Text(model.displayName)
-                }
-            }
-        }
     }
 }
