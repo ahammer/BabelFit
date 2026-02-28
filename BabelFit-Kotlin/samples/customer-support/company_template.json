@@ -1,0 +1,65 @@
+{
+    "title": "WidgetCo Support Document",
+    "company": "WidgetCo",
+    "product": "Widgets",
+    "version": "1.0",
+    "lastUpdated": "2026-02-28",
+    "contact": {
+        "supportEmail": "support@widgetco.example",
+        "supportPhone": "+1-800-555-0123",
+        "hours": "Mon-Fri 9am-5pm ET",
+        "supportPortal": "https://support.widgetco.example"
+    },
+    "sections": {
+        "overview": {
+            "title": "Product Overview",
+            "content": "The Widgets are compact, modular devices designed for home and light-industrial automation. They provide wireless connectivity and low-power operation with interchangeable sensor and actuator modules. This document uses a technical tone and includes explicit constraints where applicable (electrical, environmental, and operational limits). Key features: secure OTA updates, robust error logging, modular attachments, and defined operating constraints (see Technical Specifications)."
+        },
+        "getting_started": {
+            "title": "Getting Started",
+            "content": "Contents: product, power cable/adapter, mounting hardware, quick start guide. Safety: observe rated voltage and polarity; do not submerge or expose to condensation. Initial setup: connect power (verify adapter output), power on, install WidgetCo app or visit the support portal, create/sign-in to account, follow pairing wizard, complete initial firmware update. Constraints: first-time pairing must be completed within 2m of the intended network with 2.4 GHz Wi‑Fi; do not attempt setup on 5 GHz-only networks. LED indicators: steady green = normal, blinking amber = pairing, red = fault (see Troubleshooting)."
+        },
+        "troubleshooting": {
+            "title": "Troubleshooting",
+            "content": "First-step checks: confirm correct adapter and cable, verify LEDs, confirm device is within Wi‑Fi range, and validate credentials. Diagnostics: reboot (power cycle 10s off, 10s on), check app error codes, run built-in diagnostics, verify firmware version and apply updates. Factory reset: documented procedure in app; note: factory reset clears local logs and paired accounts. Collecting logs: enable debug logging in app, reproduce issue, upload logs and any screenshots when opening a ticket. Constraints & escalation: if device exhibits physical damage, water ingress, or evidence of unauthorized modification, warranty replacement is not available; collect photos and representative logs before RMA assessment."
+        },
+        "faq": {
+            "title": "Frequently Asked Questions",
+            "content": "How do I update firmware? Use the app or support portal -> Device -> Update Firmware. What is the warranty period? See Warranty and Returns. How do I factory reset? Press and hold reset button for 10s or use the app reset. Why won't my device connect? Confirm 2.4 GHz network, correct password, and router firewall/guest network restrictions. Where is my serial/model info? Physical label on the device and in the app under Device > About. Constraints: Do not attempt to open device enclosure; doing so voids warranty."
+        },
+        "warranty_returns": {
+            "title": "Warranty and Returns",
+            "content": "Standard warranty: free replacement for manufacturing defects for 12 months from date of purchase. Exclusions: damage due to misuse, impact, liquid ingress beyond rated tolerance, unauthorized repair or modification, or failure to follow specified electrical/environmental constraints. RMA process: open a ticket via the support portal or email support with the provided RMA template (customer name, contact, product model, serial number, purchase date, issue description, and photos). Upload representative logs if available. Decision criteria: replacements are granted for verified defects; no replacement for user-caused damage. Expected turnaround and shipping instructions are provided on the portal."
+        },
+        "technical_specs": {
+            "title": "Technical Specifications",
+            "content": "Available models: Small, Medium, Large (refer to model-specific datasheets). Electrical: input voltage and current ranges labeled on product; follow adapter specifications exactly. Wireless: Wi‑Fi 802.11b/g/n 2.4 GHz; BLE for local provisioning. Environmental: operating temperature and humidity ranges apply; do not exceed stated limits. Certifications: FCC, CE, RoHS (device is compliant with required regional certifications). Constraints: exceedance of any electrical or environmental limit may cause permanent damage and void warranty."
+        },
+        "maintenance": {
+            "title": "Maintenance",
+            "content": "Routine maintenance: keep device dry and free of dust, clean exterior with a dry cloth, inspect mounts quarterly. Firmware: check monthly and apply critical patches promptly. Replacement modules and parts: order via authorized channels; only use approved parts to maintain compliance and warranty. Disposal: follow local battery and electronics recycling rules."
+        },
+        "support_process": {
+            "title": "Support Process",
+            "content": "Contact methods: support portal, support email, and support phone (hours in Contact). Information to include in a ticket: product model, serial number, purchase date, firmware version, detailed problem description, steps already tried, and logs/screenshots. SLA: initial response within 24 business hours for standard requests; expedited handling for verified critical outages. Escalation: Customer Support Team owns the document and will escalate to engineering for unresolved technical defects. Templates for RMA and support responses are available in Templates."
+        }
+    },
+    "templates": {
+        "rma_request": "Customer name, contact, product model, serial number, purchase date, issue description, photos.",
+        "support_response": "Acknowledgement, troubleshooting steps attempted, next actions, estimated resolution time."
+    },
+    "companyInfo": {
+        "founded": 1996,
+        "mission": "Bring quality widgets to quality people.",
+        "primaryCustomers": "End users (retail consumers)",
+        "models": [
+            "Small",
+            "Medium",
+            "Large"
+        ],
+        "salesChannels": [
+            "Widget Store",
+            "WidgetWebsite"
+        ]
+    }
+}
