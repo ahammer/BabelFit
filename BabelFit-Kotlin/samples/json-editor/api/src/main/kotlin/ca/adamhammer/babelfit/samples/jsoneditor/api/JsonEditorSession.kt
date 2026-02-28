@@ -117,5 +117,9 @@ class JsonEditorSession(
 
     fun currentDocument(): JsonDocument = document
 
+    fun replaceDocument(doc: JsonDocument) {
+        document = doc
+    }
+
     fun filePath(): String = file.absolutePath
 }

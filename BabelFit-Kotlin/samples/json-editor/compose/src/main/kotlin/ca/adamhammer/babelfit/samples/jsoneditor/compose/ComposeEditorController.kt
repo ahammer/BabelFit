@@ -47,7 +47,13 @@ class ComposeEditorController(private val uiScope: CoroutineScope) : JsonEditorL
     var isBusy by mutableStateOf(false)
         private set
 
+    var isDirty by mutableStateOf(false)
+        private set
+
     var inputText by mutableStateOf("")
+
+    private var savedDocument: JsonDocument = JsonDocument.empty()
+    private val history = DocumentHistory<JsonDocument>()
 
     val chatEntries = mutableStateListOf<ChatEntry>()
 
@@ -102,9 +108,24 @@ class ComposeEditorController(private val uiScope: CoroutineScope) : JsonEditorL
     fun newFile() {
         filePath = null
         document = JsonDocument.empty()
+        savedDocument = document
+        isDirty = false
+        history.reset(document)
         chatEntries.clear()
         chatEntries.add(ChatEntry.SystemMessage("New empty document created."))
         rebuildSession()
+    }
+
+    fun save() {
+        val path = filePath
+        if (path != null) {
+            document.saveTo(File(path))
+            savedDocument = document
+            isDirty = false
+            chatEntries.add(ChatEntry.SystemMessage("Saved."))
+        } else {
+            saveAs()
+        }
     }
 
     fun saveAs() {
@@ -116,13 +137,36 @@ class ComposeEditorController(private val uiScope: CoroutineScope) : JsonEditorL
             val target = chooser.selectedFile
             document.saveTo(target)
             filePath = target.absolutePath
+            savedDocument = document
+            isDirty = false
             chatEntries.add(ChatEntry.SystemMessage("Saved to ${target.name}"))
+            rebuildSession()
         }
     }
+
+    fun undo() {
+        val doc = history.undo() ?: return
+        document = doc
+        isDirty = document != savedDocument
+        session?.replaceDocument(doc)
+    }
+
+    fun redo() {
+        val doc = history.redo() ?: return
+        document = doc
+        isDirty = document != savedDocument
+        session?.replaceDocument(doc)
+    }
+
+    val canUndo: Boolean get() = history.canUndo
+    val canRedo: Boolean get() = history.canRedo
 
     private fun loadFile(file: File) {
         filePath = file.absolutePath
         document = JsonDocument.fromFile(file)
+        savedDocument = document
+        isDirty = false
+        history.reset(document)
         chatEntries.clear()
         chatEntries.add(ChatEntry.DocumentLoaded(file.name))
         rebuildSession()
@@ -166,6 +210,8 @@ class ComposeEditorController(private val uiScope: CoroutineScope) : JsonEditorL
 
     override fun onDocumentChanged(doc: JsonDocument, path: String, operation: String) {
         document = doc
+        history.push(doc)
+        isDirty = document != savedDocument
     }
 
     override fun onToolCall(toolName: String, args: String, result: String) {
@@ -204,6 +250,7 @@ class ComposeEditorController(private val uiScope: CoroutineScope) : JsonEditorL
         // Restore the in-memory document — the session constructor may have
         // loaded a stale copy from disk or created a fresh empty doc.
         document = currentDoc
+        session?.replaceDocument(currentDoc)
     }
 
     private fun createAdapter(vendor: Vendor, model: String): ApiAdapter = when (vendor) {

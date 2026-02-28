@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.sp
 import ca.adamhammer.babelfit.samples.common.*
 import kotlinx.serialization.json.*
 import java.awt.Cursor
+import java.io.File
 
 // ── DnD-free accent colours for the JSON editor ────────────────────────────
 
@@ -215,14 +216,24 @@ private fun StatusBar(controller: ComposeEditorController) {
             modifier = Modifier.fillMaxWidth().height(24.dp).padding(horizontal = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Left: file path
+            // Left: file path + dirty indicator
+            val fileName = controller.filePath?.let { File(it).name } ?: "untitled.json"
+            val dirty = if (controller.isDirty) "*" else ""
             Text(
-                controller.filePath ?: "untitled.json",
+                "$fileName$dirty",
                 color = DimText,
                 fontSize = 11.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f)
+            )
+
+            // Document stats
+            Text(
+                "${controller.document.nodeCount()} nodes · depth ${controller.document.depth()}",
+                color = DimText.copy(alpha = 0.6f),
+                fontSize = 11.sp,
+                modifier = Modifier.padding(horizontal = 8.dp)
             )
 
             // Center: vendor + model
