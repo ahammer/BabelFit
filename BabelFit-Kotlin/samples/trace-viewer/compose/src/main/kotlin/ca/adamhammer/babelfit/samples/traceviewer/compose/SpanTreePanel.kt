@@ -62,8 +62,8 @@ private fun SpanTreeRow(
     onToggle: () -> Unit
 ) {
     val span = entry.span
-    val color = Color(ComposeTraceController.spanTypeColor(span.type))
-    val icon = ComposeTraceController.spanTypeIcon(span.type)
+    val color = Color(ComposeTraceController.spanTypeColor(span))
+    val icon = ComposeTraceController.spanTypeIcon(span)
     val bgColor = if (isSelected) color.copy(alpha = 0.15f) else Color.Transparent
 
     Row(

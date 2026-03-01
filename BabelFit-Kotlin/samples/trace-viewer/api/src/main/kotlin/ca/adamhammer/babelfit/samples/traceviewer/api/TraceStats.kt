@@ -10,11 +10,13 @@ data class TraceStatistics(
     val totalDurationMs: Long,
     val totalInputTokens: Long,
     val totalOutputTokens: Long,
-    val retryCount: Int,
+    val retriedRequestCount: Int,
     val errorCount: Int,
+    val successCount: Int,
+    val failureCount: Int,
     val longestSpan: TraceSpan?,
     val mostExpensiveSpan: TraceSpan?,
-    val avgAttemptDurationMs: Long,
+    val avgCallDurationMs: Long,
     val duplicatePromptCount: Int
 )
 
@@ -42,9 +44,11 @@ object TraceStats {
 
         // Count retries: requests with more than one attempt child
         val attemptsByRequest = attempts.groupBy { it.parentId }
-        val retryCount = attemptsByRequest.values.count { it.size > 1 }
+        val retriedRequestCount = attemptsByRequest.values.count { it.size > 1 }
 
         val errorCount = spans.count { it.error != null }
+        val successCount = attempts.count { it.error == null }
+        val failureCount = attempts.count { it.error != null }
 
         val spansWithDuration = spans.filter { it.endTimeMs != null }
         val longestSpan = spansWithDuration
@@ -55,7 +59,7 @@ object TraceStats {
             .filter { it.usage != null }
             .maxByOrNull { (it.usage?.inputTokens ?: 0) + (it.usage?.outputTokens ?: 0) }
 
-        val avgAttemptDurationMs = if (attempts.isNotEmpty()) {
+        val avgCallDurationMs = if (attempts.isNotEmpty()) {
             val durations = attempts.mapNotNull { a ->
                 a.endTimeMs?.let { end -> end - a.startTimeMs }
             }
@@ -72,11 +76,13 @@ object TraceStats {
             totalDurationMs = totalDurationMs,
             totalInputTokens = totalInputTokens,
             totalOutputTokens = totalOutputTokens,
-            retryCount = retryCount,
+            retriedRequestCount = retriedRequestCount,
             errorCount = errorCount,
+            successCount = successCount,
+            failureCount = failureCount,
             longestSpan = longestSpan,
             mostExpensiveSpan = mostExpensiveSpan,
-            avgAttemptDurationMs = avgAttemptDurationMs,
+            avgCallDurationMs = avgCallDurationMs,
             duplicatePromptCount = duplicatePromptCount
         )
     }

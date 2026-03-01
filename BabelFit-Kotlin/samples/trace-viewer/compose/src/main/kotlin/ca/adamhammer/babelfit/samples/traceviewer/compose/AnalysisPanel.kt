@@ -131,7 +131,7 @@ private fun TokenEfficiencyCard(analysis: TraceAnalysis) {
         ) {
             TokenStat("Input", TraceStats.formatTokens(eff.totalInputTokens), Color(0xFF42A5F5))
             TokenStat("Output", TraceStats.formatTokens(eff.totalOutputTokens), Color(0xFF66BB6A))
-            TokenStat("Retries", TraceStats.formatTokens(eff.retryTokens), Color(0xFFFFA726))
+            TokenStat("Failed Calls", TraceStats.formatTokens(eff.failedCallTokens), Color(0xFFFFA726))
             TokenStat("Waste", "~${eff.estimatedWastePercent}%",
                 if (eff.estimatedWastePercent > 30) ErrorColor else SuccessColor
             )

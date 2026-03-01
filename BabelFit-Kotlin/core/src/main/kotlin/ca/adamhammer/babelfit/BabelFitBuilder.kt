@@ -5,11 +5,14 @@ import ca.adamhammer.babelfit.context.DefaultContextBuilder
 import ca.adamhammer.babelfit.context.InMemoryStore
 import ca.adamhammer.babelfit.interfaces.ApiAdapter
 import ca.adamhammer.babelfit.interfaces.ContextBuilder
+import ca.adamhammer.babelfit.interfaces.ConversationManager
 import ca.adamhammer.babelfit.interfaces.Interceptor
 import ca.adamhammer.babelfit.interfaces.MemoryStore
 import ca.adamhammer.babelfit.interfaces.RequestListener
+import ca.adamhammer.babelfit.interfaces.SlidingWindowConversation
 import ca.adamhammer.babelfit.interfaces.ToolProvider
 import ca.adamhammer.babelfit.interfaces.TypeAdapter
+import ca.adamhammer.babelfit.interfaces.UnboundedConversation
 import ca.adamhammer.babelfit.model.PromptContext
 import ca.adamhammer.babelfit.model.ResiliencePolicy
 import ca.adamhammer.babelfit.model.BabelFitConfigurationException
@@ -67,6 +70,7 @@ class BabelFitBuilder<T : Any>(private val apiInterface: KClass<T>) {
     private var resiliencePolicy: ResiliencePolicy = ResiliencePolicy()
     private val typeAdapterRegistry = TypeAdapterRegistry()
     private var cacheConfig: CacheConfig? = null
+    private var conversationManager: ConversationManager? = null
 
     // ── DSL-style configuration ─────────────────────────────────────────────
 
@@ -130,6 +134,18 @@ class BabelFitBuilder<T : Any>(private val apiInterface: KClass<T>) {
         return this
     }
 
+    /** Set a conversation manager for multi-turn history tracking. */
+    fun conversation(manager: ConversationManager): BabelFitBuilder<T> {
+        this.conversationManager = manager
+        return this
+    }
+
+    /** Configure conversation management via DSL block. */
+    fun conversation(block: ConversationConfig.() -> Unit): BabelFitBuilder<T> {
+        this.conversationManager = ConversationConfig().apply(block).build()
+        return this
+    }
+
     /**
      * Register a [TypeAdapter] that bridges an external POJO to a `@Serializable` mirror type.
      *
@@ -174,14 +190,20 @@ class BabelFitBuilder<T : Any>(private val apiInterface: KClass<T>) {
             resolvedAdapter = CachingAdapter(resolvedAdapter, config.ttlMs, config.maxEntries)
         }
 
+        // Conversation manager is prepended as an interceptor so history is injected first
+        val allInterceptors = buildList {
+            conversationManager?.let { add(it) }
+            addAll(interceptors)
+        }
+
         val memoryStore = InMemoryStore()
         val usageTracker = UsageTracker()
         val allListeners = listeners.toList() + usageTracker
 
         val babelfit = BabelFit(
-            resolvedAdapter, contextBuilder, interceptors.toList(),
+            resolvedAdapter, contextBuilder, allInterceptors,
             resiliencePolicy, toolProviders.toList(), memoryStore, apiInterface,
-            allListeners, typeAdapterRegistry
+            allListeners, typeAdapterRegistry, conversationManager
         )
 
         val proxyInstance = Proxy.newProxyInstance(
@@ -230,6 +252,28 @@ class ResiliencePolicyBuilder {
 class CacheConfig {
     var ttlMs: Long = 300_000
     var maxEntries: Int = 100
+}
+
+/**
+ * DSL for configuring conversation management.
+ *
+ * ```kotlin
+ * babelFit<MyAPI> {
+ *     adapter(myAdapter)
+ *     conversation {
+ *         maxMessages = 20  // sliding window; omit for unbounded
+ *     }
+ * }
+ * ```
+ */
+@BabelFitDsl
+class ConversationConfig {
+    /** Maximum number of messages to retain. `0` means unbounded. */
+    var maxMessages: Int = 0
+
+    internal fun build(): ConversationManager =
+        if (maxMessages > 0) SlidingWindowConversation(maxMessages)
+        else UnboundedConversation()
 }
 
 /**

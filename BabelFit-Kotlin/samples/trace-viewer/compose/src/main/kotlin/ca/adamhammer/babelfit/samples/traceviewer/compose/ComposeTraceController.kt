@@ -2,6 +2,7 @@ package ca.adamhammer.babelfit.samples.traceviewer.compose
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import ca.adamhammer.babelfit.adapters.ClaudeAdapter
@@ -18,6 +19,8 @@ import ca.adamhammer.babelfit.samples.traceviewer.api.TraceLoader
 import ca.adamhammer.babelfit.samples.traceviewer.api.TraceStatistics
 import ca.adamhammer.babelfit.samples.traceviewer.api.TraceStats
 import ca.adamhammer.babelfit.samples.traceviewer.models.TraceAnalysis
+import ca.adamhammer.babelfit.samples.traceviewer.models.SpanAssessment
+import ca.adamhammer.babelfit.samples.traceviewer.models.TraceReport
 import com.openai.models.ChatModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -47,6 +50,14 @@ class ComposeTraceController(
         private set
     var traceFileName by mutableStateOf("")
         private set
+    var assessingSpanId by mutableStateOf<String?>(null)
+        private set
+    var generatedReport by mutableStateOf<TraceReport?>(null)
+        private set
+    var isGeneratingReport by mutableStateOf(false)
+        private set
+
+    val spanAssessments = mutableStateMapOf<String, SpanAssessment>()
 
     var vendor by mutableStateOf(Vendor.OPENAI)
     var model by mutableStateOf(Vendor.OPENAI.defaultModel)
@@ -61,6 +72,8 @@ class ComposeTraceController(
         traceFileName = file.name
         selectedSpan = null
         analysis = null
+        spanAssessments.clear()
+        generatedReport = null
         collapsedIds.clear()
         rebuildFlatList()
     }
@@ -110,6 +123,44 @@ class ComposeTraceController(
         }
     }
 
+    fun assessSpan(span: TraceSpan) {
+        val currentTrace = trace ?: return
+        if (assessingSpanId != null) return
+
+        assessingSpanId = span.id
+        scope.launch {
+            try {
+                val adapter = createAdapter()
+                val session = TraceAnalysisSession(apiAdapter = adapter)
+                val assessment = session.assessSpan(span, currentTrace)
+                spanAssessments[span.id] = assessment
+            } catch (e: Exception) {
+                e.printStackTrace()
+            } finally {
+                assessingSpanId = null
+            }
+        }
+    }
+
+    fun generateReport() {
+        val currentTrace = trace ?: return
+        if (isGeneratingReport) return
+
+        isGeneratingReport = true
+        generatedReport = null
+        scope.launch {
+            try {
+                val adapter = createAdapter()
+                val session = TraceAnalysisSession(apiAdapter = adapter)
+                generatedReport = session.generateReport(currentTrace)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            } finally {
+                isGeneratingReport = false
+            }
+        }
+    }
+
     private fun createAdapter(): ApiAdapter {
         return when (vendor) {
             Vendor.OPENAI -> OpenAiAdapter(model = ChatModel.of(model))
@@ -132,19 +183,19 @@ class ComposeTraceController(
     }
 
     companion object {
-        fun spanTypeColor(type: SpanType): Long = when (type) {
+        fun spanTypeColor(span: TraceSpan): Long = when (span.type) {
             SpanType.SESSION -> 0xFF42A5F5   // blue
             SpanType.REQUEST -> 0xFF66BB6A   // green
-            SpanType.ATTEMPT -> 0xFFFFC107   // amber
+            SpanType.ATTEMPT -> if (span.error == null) 0xFF66BB6A else 0xFFEF5350 // green/red
             SpanType.TOOL_CALL -> 0xFFAB47BC // purple
             SpanType.AGENT -> 0xFFFFA726    // orange
             SpanType.STEP -> 0xFF78909C     // grey
         }
 
-        fun spanTypeIcon(type: SpanType): String = when (type) {
+        fun spanTypeIcon(span: TraceSpan): String = when (span.type) {
             SpanType.SESSION -> "⬢"
             SpanType.REQUEST -> "▶"
-            SpanType.ATTEMPT -> "◆"
+            SpanType.ATTEMPT -> if (span.error == null) "✓" else "✗"
             SpanType.TOOL_CALL -> "⚙"
             SpanType.AGENT -> "◎"
             SpanType.STEP -> "○"

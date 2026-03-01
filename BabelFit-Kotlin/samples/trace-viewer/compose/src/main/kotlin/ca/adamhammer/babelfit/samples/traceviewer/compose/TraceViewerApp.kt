@@ -1,6 +1,8 @@
 package ca.adamhammer.babelfit.samples.traceviewer.compose
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -10,6 +12,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ca.adamhammer.babelfit.samples.common.*
 import ca.adamhammer.babelfit.samples.traceviewer.api.TraceStats
+import java.awt.Toolkit
+import java.awt.datatransfer.StringSelection
 
 @Composable
 fun TraceViewerApp() {
@@ -83,6 +87,12 @@ private fun WelcomeScreen(controller: ComposeTraceController) {
 
 @Composable
 private fun TraceScreen(controller: ComposeTraceController) {
+    var showReport by remember { mutableStateOf(false) }
+
+    // Show report dialog when one finishes generating
+    val report = controller.generatedReport
+    LaunchedEffect(report) { if (report != null) showReport = true }
+
     Column(modifier = Modifier.fillMaxSize()) {
         // Toolbar
         Toolbar(controller)
@@ -104,6 +114,10 @@ private fun TraceScreen(controller: ComposeTraceController) {
 
         // Status bar
         StatsBar(controller)
+    }
+
+    if (showReport && report != null) {
+        ReportDialog(report.markdownSummary) { showReport = false }
     }
 }
 
@@ -148,6 +162,17 @@ private fun Toolbar(controller: ComposeTraceController) {
             ) {
                 Text(if (controller.isAnalyzing) "Analyzing..." else "Analyze")
             }
+
+            Button(
+                onClick = { controller.generateReport() },
+                enabled = controller.trace != null && !controller.isGeneratingReport,
+                colors = ButtonDefaults.buttonColors(backgroundColor = DarkCardColor)
+            ) {
+                Text(
+                    if (controller.isGeneratingReport) "Generating..." else "Report",
+                    color = BrightText
+                )
+            }
         }
     }
 }
@@ -167,7 +192,8 @@ private fun StatsBar(controller: ComposeTraceController) {
             StatItem("Tokens In", TraceStats.formatTokens(stats.totalInputTokens))
             StatItem("Tokens Out", TraceStats.formatTokens(stats.totalOutputTokens))
             StatItem("Errors", stats.errorCount.toString(), isError = stats.errorCount > 0)
-            StatItem("Retries", stats.retryCount.toString(), isError = stats.retryCount > 0)
+            StatItem("Successes", stats.successCount.toString())
+            StatItem("Failures", stats.failureCount.toString(), isError = stats.failureCount > 0)
         }
     }
 }
@@ -183,4 +209,42 @@ private fun StatItem(label: String, value: String, isError: Boolean = false) {
             fontWeight = FontWeight.Bold
         )
     }
+}
+
+@Composable
+private fun ReportDialog(markdown: String, onDismiss: () -> Unit) {
+    var copied by remember { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Analysis Report", color = BrightText) },
+        text = {
+            Box(modifier = Modifier.heightIn(max = 500.dp)) {
+                val scrollState = rememberScrollState()
+                Column(modifier = Modifier.verticalScroll(scrollState)) {
+                    Text(
+                        markdown,
+                        color = BrightText,
+                        fontSize = 12.sp,
+                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = {
+                val clipboard = Toolkit.getDefaultToolkit().systemClipboard
+                clipboard.setContents(StringSelection(markdown), null)
+                copied = true
+            }) {
+                Text(if (copied) "Copied!" else "Copy to Clipboard")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Close")
+            }
+        },
+        backgroundColor = DarkCardColor
+    )
 }

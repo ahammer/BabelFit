@@ -4,6 +4,7 @@ import ca.adamhammer.babelfit.BabelFitInstance
 import ca.adamhammer.babelfit.annotations.Terminal
 import kotlinx.coroutines.runBlocking
 import java.util.concurrent.Future
+import java.util.logging.Logger
 import kotlin.reflect.KClass
 import kotlin.reflect.KFunction
 import kotlin.reflect.KParameter
@@ -27,6 +28,8 @@ import kotlin.reflect.full.hasAnnotation
 class AgentDispatcher<T : Any>(
     private val babelfitInstance: BabelFitInstance<T>
 ) {
+    private val logger = Logger.getLogger(AgentDispatcher::class.java.name)
+
     data class DispatchResult(
         val methodName: String,
         val value: Any?,
@@ -48,10 +51,7 @@ class AgentDispatcher<T : Any>(
     fun dispatch(decision: AiDecision): Any? = runBlocking { dispatchWithMetadata(decision).value }
 
     suspend fun dispatchWithMetadata(decision: AiDecision): DispatchResult {
-        val method = methodMap[decision.method]
-            ?: throw IllegalArgumentException(
-                "Unknown method '${decision.method}'. Available: ${methodMap.keys}"
-            )
+        val method = resolveMethod(decision.method)
 
         val args = resolveArguments(method, decision.argsMap())
         val result = if (method.isSuspend) {
@@ -70,10 +70,7 @@ class AgentDispatcher<T : Any>(
     }
 
     fun isTerminal(methodName: String): Boolean {
-        val method = methodMap[methodName]
-            ?: throw IllegalArgumentException(
-                "Unknown method '$methodName'. Available: ${methodMap.keys}"
-            )
+        val method = resolveMethod(methodName)
         return method.hasAnnotation<Terminal>()
     }
 
@@ -82,6 +79,40 @@ class AgentDispatcher<T : Any>(
             method.parameters.size == 1 && method.hasAnnotation<Terminal>() // 1 parameter is the instance itself
         }
         ?.name
+
+    /**
+     * Resolves a method name with fuzzy matching fallback.
+     *
+     * 1. Exact match
+     * 2. Case-insensitive match
+     * 3. Levenshtein distance ≤ 3
+     *
+     * Logs a warning when fuzzy matching is used.
+     */
+    internal fun resolveMethod(name: String): KFunction<*> {
+        // 1. Exact match
+        methodMap[name]?.let { return it }
+
+        // 2. Case-insensitive match
+        val caseMatch = methodMap.entries.firstOrNull { it.key.equals(name, ignoreCase = true) }
+        if (caseMatch != null) {
+            logger.warning { "Fuzzy match: '${name}' resolved to '${caseMatch.key}' (case-insensitive)" }
+            return caseMatch.value
+        }
+
+        // 3. Levenshtein distance ≤ 3
+        val closest = methodMap.entries
+            .map { it to levenshtein(name.lowercase(), it.key.lowercase()) }
+            .filter { it.second <= 3 }
+            .minByOrNull { it.second }
+
+        if (closest != null) {
+            logger.warning { "Fuzzy match: '${name}' resolved to '${closest.first.key}' (edit distance ${closest.second})" }
+            return closest.first.value
+        }
+
+        throw IllegalArgumentException("Unknown method '$name'. Available: ${methodMap.keys}")
+    }
 
     private fun resolveArguments(method: KFunction<*>, args: Map<String, String>): Map<KParameter, Any?> {
         val resolvedArgs = mutableMapOf<KParameter, Any?>()
@@ -117,4 +148,21 @@ class AgentDispatcher<T : Any>(
         Boolean::class -> value.toBoolean()
         else -> value
     }
+}
+
+/** Compute Levenshtein edit distance between two strings. */
+internal fun levenshtein(a: String, b: String): Int {
+    val m = a.length
+    val n = b.length
+    var prev = IntArray(n + 1) { it }
+    var curr = IntArray(n + 1)
+    for (i in 1..m) {
+        curr[0] = i
+        for (j in 1..n) {
+            val cost = if (a[i - 1] == b[j - 1]) 0 else 1
+            curr[j] = minOf(prev[j] + 1, curr[j - 1] + 1, prev[j - 1] + cost)
+        }
+        val tmp = prev; prev = curr; curr = tmp
+    }
+    return prev[n]
 }

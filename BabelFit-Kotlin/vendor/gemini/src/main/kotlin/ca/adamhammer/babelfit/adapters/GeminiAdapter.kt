@@ -382,7 +382,7 @@ class GeminiAdapter(
                 MessageRole.ASSISTANT -> "model"
             }
             contents.add(
-                Content.builder().role(role).parts(listOf(Part.fromText(msg.content))).build()
+                Content.builder().role(role).parts(listOf(Part.fromText(msg.textContent))).build()
             )
         }
         contents.add(

@@ -5,6 +5,7 @@ import ca.adamhammer.babelfit.context.TraceContextElement
 import ca.adamhammer.babelfit.context.TraceContextKeys
 import ca.adamhammer.babelfit.interfaces.ApiAdapter
 import ca.adamhammer.babelfit.interfaces.ContextBuilder
+import ca.adamhammer.babelfit.interfaces.ConversationManager
 import ca.adamhammer.babelfit.interfaces.Interceptor
 import ca.adamhammer.babelfit.interfaces.MemoryStore
 import ca.adamhammer.babelfit.interfaces.RequestListener
@@ -38,6 +39,7 @@ import kotlin.reflect.jvm.kotlinFunction
  *
  * Supports `suspend` functions, `Future<T>`, and `Flow<String>` return types.
  */
+@Suppress("LongParameterList")
 class BabelFit(
     private val adapter: ApiAdapter,
     private val contextBuilder: ContextBuilder,
@@ -47,7 +49,8 @@ class BabelFit(
     private val memoryStore: MemoryStore,
     private val klass: KClass<*>,
     listeners: List<RequestListener> = emptyList(),
-    private val typeAdapterRegistry: TypeAdapterRegistry = TypeAdapterRegistry()
+    private val typeAdapterRegistry: TypeAdapterRegistry = TypeAdapterRegistry(),
+    private val conversationManager: ConversationManager? = null
 ) : InvocationHandler {
 
     private val resilienceExecutor = ResilienceExecutor(resilience, listeners)
@@ -113,6 +116,7 @@ class BabelFit(
                         adapter, context, mirrorClass, toolProviders
                     )
                     if (memorizeKey != null) memoryStore.put(memorizeKey, result.toJsonString())
+                    recordConversation(context.methodInvocation, result)
                     typeAdapterRegistry.convertResult(result, kClass)
                 } finally {
                     concurrencySemaphore?.release()
@@ -160,6 +164,7 @@ class BabelFit(
                     adapter, context, mirrorClass, toolProviders
                 )
                 if (memorizeKey != null) memoryStore.put(memorizeKey, result.toJsonString())
+                recordConversation(context.methodInvocation, result)
                 typeAdapterRegistry.convertResult(result, resultClass)
             } finally {
                 concurrencySemaphore?.release()
@@ -188,5 +193,12 @@ class BabelFit(
         }
         
         return context
+    }
+
+    private fun recordConversation(userPrompt: String, result: Any?) {
+        conversationManager?.let { cm ->
+            cm.addUserMessage(userPrompt)
+            cm.addAssistantMessage(result?.toJsonString() ?: "")
+        }
     }
 }

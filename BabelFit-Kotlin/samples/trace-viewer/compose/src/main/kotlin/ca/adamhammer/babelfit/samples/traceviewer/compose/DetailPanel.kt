@@ -24,7 +24,8 @@ private enum class DetailTab(val label: String) {
     MESSAGES("Messages"),
     PROMPT("Prompt"),
     SCHEMA("Schema"),
-    RESPONSE("Response")
+    RESPONSE("Response"),
+    ASSESS("Assess")
 }
 
 @Composable
@@ -38,7 +39,7 @@ fun DetailPanel(controller: ComposeTraceController, modifier: Modifier) {
         } else {
             Column(modifier = Modifier.fillMaxSize()) {
                 if (span != null) {
-                    SpanDetail(span)
+                    SpanDetail(span, controller)
                 }
                 if (analysis != null || controller.isAnalyzing) {
                     AnalysisSection(controller)
@@ -59,7 +60,7 @@ private fun EmptyDetail() {
 }
 
 @Composable
-private fun SpanDetail(span: TraceSpan) {
+private fun SpanDetail(span: TraceSpan, controller: ComposeTraceController) {
     var selectedTab by remember(span.id) { mutableStateOf(DetailTab.OVERVIEW) }
 
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -74,6 +75,7 @@ private fun SpanDetail(span: TraceSpan) {
                 DetailTab.PROMPT -> PromptTab(span)
                 DetailTab.SCHEMA -> SchemaTab(span)
                 DetailTab.RESPONSE -> ResponseTab(span)
+                DetailTab.ASSESS -> AssessmentTab(span, controller)
             }
         }
     }
@@ -114,11 +116,12 @@ private fun tabHasContent(tab: DetailTab, span: TraceSpan): Boolean = when (tab)
     DetailTab.PROMPT -> span.requestInput != null
     DetailTab.SCHEMA -> span.schema != null
     DetailTab.RESPONSE -> span.responseOutput != null
+    DetailTab.ASSESS -> true
 }
 
 @Composable
 private fun SpanHeader(span: TraceSpan) {
-    val color = Color(ComposeTraceController.spanTypeColor(span.type))
+    val color = Color(ComposeTraceController.spanTypeColor(span))
 
     Surface(color = DarkCardColor) {
         Row(
@@ -126,7 +129,7 @@ private fun SpanHeader(span: TraceSpan) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text(ComposeTraceController.spanTypeIcon(span.type), color = color, fontSize = 18.sp)
+            Text(ComposeTraceController.spanTypeIcon(span), color = color, fontSize = 18.sp)
             Column(modifier = Modifier.weight(1f)) {
                 Text(span.name, color = BrightText, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                 Text(span.type.name, color = color, fontSize = 11.sp)

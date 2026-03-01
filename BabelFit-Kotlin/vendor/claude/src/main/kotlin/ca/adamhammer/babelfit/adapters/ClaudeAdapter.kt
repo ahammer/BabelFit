@@ -288,11 +288,11 @@ class ClaudeAdapter(
             when (msg.role) {
                 MessageRole.SYSTEM -> {} // handled via .system() param
                 MessageRole.USER -> {
-                    val content = msg.content
+                    val content = msg.textContent
                     adders.add { it.addUserMessage(content) }
                 }
                 MessageRole.ASSISTANT -> {
-                    val content = msg.content
+                    val content = msg.textContent
                     adders.add { it.addAssistantMessage(content) }
                 }
             }

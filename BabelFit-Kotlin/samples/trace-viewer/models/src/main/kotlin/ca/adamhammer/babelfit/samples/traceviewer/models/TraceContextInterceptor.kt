@@ -4,17 +4,25 @@ import ca.adamhammer.babelfit.interfaces.Interceptor
 import ca.adamhammer.babelfit.model.PromptContext
 
 class TraceContextInterceptor(
+    private val cheatSheetProvider: () -> String = { "" },
     private val traceSummaryProvider: () -> String
 ) : Interceptor {
 
     override fun intercept(context: PromptContext): PromptContext {
+        val cheatSheet = cheatSheetProvider()
         val summary = traceSummaryProvider()
-        if (summary.isBlank()) return context
+        if (cheatSheet.isBlank() && summary.isBlank()) return context
 
         val injection = buildString {
-            appendLine()
-            appendLine("# Trace Data for Analysis")
-            appendLine(summary)
+            if (cheatSheet.isNotBlank()) {
+                appendLine()
+                appendLine(cheatSheet)
+            }
+            if (summary.isNotBlank()) {
+                appendLine()
+                appendLine("# Trace Data for Analysis")
+                appendLine(summary)
+            }
         }
 
         return context.copy(

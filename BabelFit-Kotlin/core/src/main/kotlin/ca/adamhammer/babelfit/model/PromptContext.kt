@@ -7,12 +7,41 @@ package ca.adamhammer.babelfit.model
 enum class MessageRole { SYSTEM, USER, ASSISTANT }
 
 /**
- * A single message in a conversation history.
+ * A part of a message's content. Messages can be composed of one or more parts,
+ * supporting text, images, and other media types.
+ */
+sealed interface ContentPart
+
+/** Plain text content. */
+data class TextPart(val text: String) : ContentPart
+
+/** Base64-encoded image content. */
+data class ImagePart(val base64: String, val mediaType: String) : ContentPart
+
+/**
+ * A single message in a conversation history, supporting multimodal content.
+ *
+ * For backward compatibility, [Message] can be constructed with a plain [String],
+ * which is automatically wrapped in a [TextPart]:
+ * ```kotlin
+ * Message(MessageRole.USER, "Hello")           // text-only convenience
+ * Message(MessageRole.USER, listOf(            // multimodal
+ *     TextPart("Describe this image:"),
+ *     ImagePart(base64Data, "image/png")
+ * ))
+ * ```
  */
 data class Message(
     val role: MessageRole,
-    val content: String
-)
+    val content: List<ContentPart>
+) {
+    /** Convenience constructor for text-only messages. */
+    constructor(role: MessageRole, text: String) : this(role, listOf(TextPart(text)))
+
+    /** Returns all text parts concatenated, or empty string if none. */
+    val textContent: String
+        get() = content.filterIsInstance<TextPart>().joinToString("") { it.text }
+}
 
 /**
  * Type-safe key for storing values in [PromptContext.properties].

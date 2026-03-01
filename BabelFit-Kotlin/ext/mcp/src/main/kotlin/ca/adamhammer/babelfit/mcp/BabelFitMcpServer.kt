@@ -2,6 +2,7 @@ package ca.adamhammer.babelfit.mcp
 
 import ca.adamhammer.babelfit.annotations.AiOperation
 import ca.adamhammer.babelfit.annotations.AiParameter
+import ca.adamhammer.babelfit.utils.ReflectiveDispatch
 import ca.adamhammer.babelfit.utils.toToolDefinitions
 import io.modelcontextprotocol.server.McpServer
 import io.modelcontextprotocol.server.McpServerFeatures
@@ -153,7 +154,7 @@ class BabelFitMcpServer private constructor(
         > {
             return java.util.function.BiFunction { _, request ->
                 try {
-                    val args = resolveMethodArguments(method, request.arguments() ?: emptyMap())
+                    val args = ReflectiveDispatch.resolveMethodArguments(method, request.arguments() ?: emptyMap())
                     val result = method.invoke(implementation, *args)
 
                     // Unwrap Future results
@@ -184,45 +185,9 @@ class BabelFitMcpServer private constructor(
             }
         }
 
-        private fun resolveMethodArguments(method: Method, arguments: Map<String, Any>): Array<Any?> {
-            checkParameterNames(method)
-            return method.parameters.map { param ->
-                val value = arguments[param.name]
-                if (value == null) null else coerceValue(value, param.type)
-            }.toTypedArray()
-        }
-
-        private val intTypes = setOf(Int::class.java, Integer::class.java)
-        private val longTypes = setOf(Long::class.java, java.lang.Long::class.java)
-        private val doubleTypes = setOf(Double::class.java, java.lang.Double::class.java)
-        private val floatTypes = setOf(Float::class.java, java.lang.Float::class.java)
-        private val boolTypes = setOf(Boolean::class.java, java.lang.Boolean::class.java)
-
-        private fun coerceValue(value: Any, targetType: Class<*>): Any? = when {
-            targetType == String::class.java -> value.toString()
-            targetType in intTypes -> (value as? Number)?.toInt() ?: value.toString().toIntOrNull()
-            targetType in longTypes -> (value as? Number)?.toLong() ?: value.toString().toLongOrNull()
-            targetType in doubleTypes -> (value as? Number)?.toDouble() ?: value.toString().toDoubleOrNull()
-            targetType in floatTypes -> (value as? Number)?.toFloat() ?: value.toString().toFloatOrNull()
-            targetType in boolTypes -> value as? Boolean ?: value.toString().toBoolean()
-            else -> value
-        }
     }
 
     companion object {
         fun builder(): Builder = Builder()
-
-        private val SYNTHETIC_NAME = Regex("^arg\\d+$")
-
-        internal fun checkParameterNames(method: Method) {
-            val synthetic = method.parameters.filter { SYNTHETIC_NAME.matches(it.name) }
-            if (synthetic.isNotEmpty()) {
-                throw IllegalStateException(
-                    "Parameter names for '${method.name}' look synthetic (${synthetic.joinToString { it.name }}). " +
-                    "Ensure the compiler preserves real names by adding '-parameters' (javac) " +
-                    "or 'javaParameters = true' (kotlinc) to your build configuration."
-                )
-            }
-        }
     }
 }

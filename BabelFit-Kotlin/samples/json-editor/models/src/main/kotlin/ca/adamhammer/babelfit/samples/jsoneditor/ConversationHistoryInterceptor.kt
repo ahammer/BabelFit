@@ -9,11 +9,11 @@ class ConversationHistoryInterceptor : Interceptor {
     private val history = mutableListOf<Message>()
 
     fun addUserMessage(content: String) {
-        history.add(Message(role = MessageRole.USER, content = content))
+        history.add(Message(MessageRole.USER, content))
     }
 
     fun addAssistantResponse(content: String) {
-        history.add(Message(role = MessageRole.ASSISTANT, content = content))
+        history.add(Message(MessageRole.ASSISTANT, content))
     }
 
     override fun intercept(context: PromptContext): PromptContext =

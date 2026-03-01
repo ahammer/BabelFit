@@ -551,17 +551,17 @@ class OpenAiAdapter(
             when (msg.role) {
                 MessageRole.SYSTEM -> messages.add(
                     ChatCompletionMessageParam.ofSystem(
-                        ChatCompletionSystemMessageParam.builder().content(msg.content).build()
+                        ChatCompletionSystemMessageParam.builder().content(msg.textContent).build()
                     )
                 )
                 MessageRole.USER -> messages.add(
                     ChatCompletionMessageParam.ofUser(
-                        ChatCompletionUserMessageParam.builder().content(msg.content).build()
+                        ChatCompletionUserMessageParam.builder().content(msg.textContent).build()
                     )
                 )
                 MessageRole.ASSISTANT -> messages.add(
                     ChatCompletionMessageParam.ofAssistant(
-                        ChatCompletionAssistantMessageParam.builder().content(msg.content).build()
+                        ChatCompletionAssistantMessageParam.builder().content(msg.textContent).build()
                     )
                 )
             }

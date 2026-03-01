@@ -69,3 +69,20 @@ annotation class AiSchema(
 @Target(AnnotationTarget.FUNCTION)
 @Retention(AnnotationRetention.RUNTIME)
 annotation class Terminal
+
+/**
+ * Declares valid outgoing transitions from this method in an agent state graph.
+ *
+ * The AI agent will only be allowed to navigate to the named methods after executing
+ * the annotated method. This constrains the decision space and reduces hallucination.
+ *
+ * ```kotlin
+ * @Transitions("checkAbilities", "commitAction")
+ * suspend fun observeSituation(): String
+ * ```
+ *
+ * @param to method names that are valid next steps from this method
+ */
+@Target(AnnotationTarget.FUNCTION)
+@Retention(AnnotationRetention.RUNTIME)
+annotation class Transitions(vararg val to: String)

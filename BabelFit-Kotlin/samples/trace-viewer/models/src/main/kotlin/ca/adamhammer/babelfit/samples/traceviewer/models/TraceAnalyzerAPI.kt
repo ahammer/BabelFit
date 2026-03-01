@@ -42,4 +42,34 @@ interface TraceAnalyzerAPI {
         @AiParameter(description = "Comma-separated list of identified issues to address")
         issues: String
     ): Future<List<PromptSuggestion>>
+
+    @AiOperation(
+        summary = "Assess a single trace span for quality and provide BabelFit-aware guidance",
+        description = """Assess the quality of a single span from an LLM interaction trace.
+            Evaluate the prompt, schema, response, and any errors. Identify specific prompt issues
+            and provide actionable code guidance that targets the BabelFit application code
+            (annotations, interceptors, schema classes, resilience config) rather than the raw
+            LLM prompt text. Use the BabelFit framework reference provided in context."""
+    )
+    @AiResponse(description = "Span assessment with quality rating, observations, prompt issues, and code guidance")
+    fun assessSpan(
+        @AiParameter(description = "Context for the span including its type, content, parent info, and trace summary")
+        spanContext: String
+    ): Future<SpanAssessment>
+
+    @AiOperation(
+        summary = "Generate an informed agent prompt for fixing BabelFit application code",
+        description = """Based on the full analysis context (trace summary, session analysis, per-span
+            assessments), generate a comprehensive prompt that a human developer or AI coding agent
+            can use to fix the BabelFit application code. The prompt should:
+            1. Reference specific BabelFit annotations, interceptors, and configuration
+            2. Describe what the code probably looks like based on the trace and framework knowledge
+            3. List concrete changes to make (annotation tweaks, schema redesign, interceptor additions, etc.)
+            4. Be self-contained and actionable without needing to see the original trace"""
+    )
+    @AiResponse(description = "An agent prompt with the full fix instructions and a list of key changes")
+    fun generateAgentPrompt(
+        @AiParameter(description = "Full analysis context including trace summary, weaknesses, assessments, and guidance")
+        analysisContext: String
+    ): Future<AgentPrompt>
 }

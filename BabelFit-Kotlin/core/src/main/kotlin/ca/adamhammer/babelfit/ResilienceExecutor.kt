@@ -80,8 +80,8 @@ class ResilienceExecutor(
                 
                 currentContext = currentContext.copy(
                     conversationHistory = currentContext.conversationHistory + Message(
-                        role = MessageRole.USER,
-                        content = "Validation failed: ${e.message}. Please correct your response."
+                        MessageRole.USER,
+                        "Validation failed: ${e.message}. Please correct your response."
                     )
                 )
                 

@@ -1,32 +1,54 @@
 package ca.adamhammer.babelfit.samples.traceviewer.cli
 
+import ca.adamhammer.babelfit.adapters.ClaudeAdapter
+import ca.adamhammer.babelfit.adapters.GeminiAdapter
 import ca.adamhammer.babelfit.adapters.OpenAiAdapter
 import ca.adamhammer.babelfit.debug.trace.SpanType
 import ca.adamhammer.babelfit.debug.trace.TraceExport
-import ca.adamhammer.babelfit.debug.trace.TracingAdapter
-import ca.adamhammer.babelfit.debug.trace.TracingRequestListener
-import ca.adamhammer.babelfit.debug.trace.TraceSession
+import ca.adamhammer.babelfit.debug.trace.TraceSpan
+import ca.adamhammer.babelfit.interfaces.ApiAdapter
 import ca.adamhammer.babelfit.samples.traceviewer.api.SpanNode
 import ca.adamhammer.babelfit.samples.traceviewer.api.TraceAnalysisSession
 import ca.adamhammer.babelfit.samples.traceviewer.api.TraceLoader
 import ca.adamhammer.babelfit.samples.traceviewer.api.TraceStatistics
 import ca.adamhammer.babelfit.samples.traceviewer.api.TraceStats
 import ca.adamhammer.babelfit.samples.traceviewer.models.TraceAnalysis
+import com.openai.models.ChatModel
 import kotlinx.coroutines.runBlocking
 import java.io.File
 
+private const val USAGE = """Usage: trace-viewer <trace.btrace.json> [options]
+
+Options:
+  --analyze              Run AI-powered analysis (interactive)
+  --report               Generate full markdown report (batch mode)
+  --vendor <name>        AI vendor: openai, anthropic, gemini (default: openai)
+  --model <model>        Model name (default: vendor default)
+  --output <file>        Output file for report (default: stdout)"""
+
 fun main(args: Array<String>) = runBlocking {
     if (args.isEmpty()) {
-        println("Usage: trace-viewer <trace.btrace.json> [--analyze]")
+        println(USAGE)
         return@runBlocking
     }
 
     val filePath = args[0]
     val doAnalyze = args.any { it == "--analyze" }
-    val file = File(filePath)
+    val doReport = args.any { it == "--report" }
+    val vendor = argValue(args, "--vendor") ?: "openai"
+    val model = argValue(args, "--model")
+    val outputPath = argValue(args, "--output")
 
+    val file = File(filePath)
     if (!file.exists()) {
         System.err.println("File not found: $filePath")
+        return@runBlocking
+    }
+
+    val trace = TraceLoader.loadFromFile(file)
+
+    if (doReport) {
+        runReport(trace, vendor, model, outputPath)
         return@runBlocking
     }
 
@@ -36,7 +58,6 @@ fun main(args: Array<String>) = runBlocking {
     println("  Loading: ${file.name}")
     println()
 
-    val trace = TraceLoader.loadFromFile(file)
     val roots = TraceLoader.buildSpanTree(trace)
     val stats = TraceStats.computeStats(trace)
 
@@ -44,10 +65,15 @@ fun main(args: Array<String>) = runBlocking {
     printSpanTree(roots)
 
     if (doAnalyze) {
-        runAnalysis(trace)
+        runAnalysis(trace, vendor, model)
     } else {
-        println("  Tip: Add --analyze flag to run AI-powered analysis")
+        println("  Tip: Add --analyze or --report flag for AI-powered analysis")
     }
+}
+
+private fun argValue(args: Array<String>, flag: String): String? {
+    val idx = args.indexOf(flag)
+    return if (idx >= 0 && idx + 1 < args.size) args[idx + 1] else null
 }
 
 private fun printStats(stats: TraceStatistics) {
@@ -60,7 +86,9 @@ private fun printStats(stats: TraceStatistics) {
     println("  Tokens In:  ${TraceStats.formatTokens(stats.totalInputTokens)}")
     println("  Tokens Out: ${TraceStats.formatTokens(stats.totalOutputTokens)}")
     println("  Errors:     ${stats.errorCount}")
-    println("  Retries:    ${stats.retryCount}")
+    println("  Successes:  ${stats.successCount}")
+    println("  Failures:   ${stats.failureCount}")
+    println("  Retried:    ${stats.retriedRequestCount}")
     println("  Dup Prompts:${stats.duplicatePromptCount}")
     println()
 }
@@ -79,36 +107,59 @@ private fun printSpanTree(roots: List<SpanNode>) {
             " [${it.inputTokens}↑ ${it.outputTokens}↓]"
         } ?: ""
 
-        val error = if (span.error != null) " ✗" else ""
-        val typeTag = spanTypeIcon(span.type)
+        val typeTag = spanTypeIcon(span)
 
-        println("$indent$typeTag ${span.name} ($duration)$tokens$error")
+        println("$indent$typeTag ${span.name} ($duration)$tokens")
     }
     println()
 }
 
-private fun spanTypeIcon(type: SpanType): String = when (type) {
+private fun spanTypeIcon(span: TraceSpan): String = when (span.type) {
     SpanType.SESSION -> "⬢"
     SpanType.REQUEST -> "▶"
-    SpanType.ATTEMPT -> "◆"
+    SpanType.ATTEMPT -> if (span.error == null) "✓" else "✗"
     SpanType.TOOL_CALL -> "⚙"
     SpanType.AGENT -> "◎"
     SpanType.STEP -> "○"
 }
 
-private suspend fun runAnalysis(trace: TraceExport) {
+private suspend fun runAnalysis(trace: TraceExport, vendor: String, model: String?) {
     println("  ── AI Analysis ─────────────────────────────────────")
     println("  Running analysis...")
 
-    val traceSession = TraceSession()
-    val adapter = TracingAdapter(OpenAiAdapter(), traceSession)
-    val analysisSession = TraceAnalysisSession(
-        apiAdapter = adapter,
-        requestListeners = listOf(TracingRequestListener(traceSession))
-    )
+    val adapter = createAdapter(vendor, model)
+    val analysisSession = TraceAnalysisSession(apiAdapter = adapter)
 
     val analysis = analysisSession.analyze(trace)
     printAnalysis(analysis)
+}
+
+private suspend fun runReport(
+    trace: TraceExport,
+    vendor: String,
+    model: String?,
+    outputPath: String?
+) {
+    System.err.println("Generating report...")
+    val adapter = createAdapter(vendor, model)
+    val session = TraceAnalysisSession(apiAdapter = adapter)
+    val report = session.generateReport(trace)
+
+    if (outputPath != null) {
+        File(outputPath).writeText(report.markdownSummary)
+        System.err.println("Report written to $outputPath")
+    } else {
+        println(report.markdownSummary)
+    }
+}
+
+private fun createAdapter(vendor: String, model: String?): ApiAdapter {
+    return when (vendor.lowercase()) {
+        "openai" -> OpenAiAdapter(model = ChatModel.of(model ?: "gpt-5-mini"))
+        "anthropic" -> ClaudeAdapter(model = model ?: "claude-sonnet-4-6")
+        "gemini" -> GeminiAdapter(model = model ?: "gemini-2.5-flash")
+        else -> error("Unknown vendor: $vendor. Use openai, anthropic, or gemini.")
+    }
 }
 
 private fun printAnalysis(analysis: TraceAnalysis) {
@@ -120,7 +171,7 @@ private fun printAnalysis(analysis: TraceAnalysis) {
     println("  Token Efficiency:")
     println("    Input:  ${TraceStats.formatTokens(eff.totalInputTokens)}")
     println("    Output: ${TraceStats.formatTokens(eff.totalOutputTokens)}")
-    println("    Retry:  ${TraceStats.formatTokens(eff.retryTokens)}")
+    println("    Failed: ${TraceStats.formatTokens(eff.failedCallTokens)}")
     println("    Waste:  ~${eff.estimatedWastePercent}%")
     println()
 
