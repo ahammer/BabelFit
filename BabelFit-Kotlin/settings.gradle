@@ -43,3 +43,7 @@ include 'samples-json-editor:models', 'samples-json-editor:api', 'samples-json-e
 include 'samples-customer-support'
 project(':samples-customer-support').projectDir = file('samples/customer-support')
 include 'samples-customer-support:models', 'samples-customer-support:api', 'samples-customer-support:cli', 'samples-customer-support:compose'
+
+include 'samples-trace-viewer'
+project(':samples-trace-viewer').projectDir = file('samples/trace-viewer')
+include 'samples-trace-viewer:models', 'samples-trace-viewer:api', 'samples-trace-viewer:cli', 'samples-trace-viewer:compose'
