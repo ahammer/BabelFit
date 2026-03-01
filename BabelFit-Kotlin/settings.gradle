@@ -39,3 +39,7 @@ include 'samples-dnd:models', 'samples-dnd:api', 'samples-dnd:cli', 'samples-dnd
 include 'samples-json-editor'
 project(':samples-json-editor').projectDir = file('samples/json-editor')
 include 'samples-json-editor:models', 'samples-json-editor:api', 'samples-json-editor:cli', 'samples-json-editor:compose'
+
+include 'samples-customer-support'
+project(':samples-customer-support').projectDir = file('samples/customer-support')
+include 'samples-customer-support:models', 'samples-customer-support:api', 'samples-customer-support:cli', 'samples-customer-support:compose'
