@@ -4,22 +4,26 @@ import ca.adamhammer.babelfit.adapters.OpenAiAdapter
 import ca.adamhammer.babelfit.debug.trace.TraceSession
 import ca.adamhammer.babelfit.debug.trace.TracingAdapter
 import ca.adamhammer.babelfit.debug.trace.TracingRequestListener
+import ca.adamhammer.babelfit.samples.jsoneditor.api.AgentJsonEditorSession
 import ca.adamhammer.babelfit.samples.jsoneditor.api.JsonEditorListener
 import ca.adamhammer.babelfit.samples.jsoneditor.api.JsonEditorSession
 import ca.adamhammer.babelfit.samples.jsoneditor.model.JsonDocument
 import kotlinx.coroutines.runBlocking
 
 fun main(args: Array<String>) = runBlocking {
-    val filePath = args.firstOrNull() ?: "test.json"
+    val agentMode = args.contains("--agent")
+    val filePath = args.firstOrNull { !it.startsWith("--") } ?: "test.json"
 
     val openAiAdapter = OpenAiAdapter()
     val traceSession = TraceSession()
     val adapter = TracingAdapter(openAiAdapter, traceSession)
+    val mode = if (agentMode) "Agent" else "Simple"
 
     println("═══════════════════════════════════════════════════════")
     println("  BabelFit JSON Editor — Conversational Document Editing")
     println("═══════════════════════════════════════════════════════")
     println("  File: $filePath")
+    println("  Mode: $mode")
     println("  Debug: ${traceSession.getSessionId()} (.btrace.json will be saved on exit)")
     println()
     println("  Commands: 'show' (print doc), 'save', 'exit'")
@@ -27,23 +31,62 @@ fun main(args: Array<String>) = runBlocking {
     println("═══════════════════════════════════════════════════════")
 
     val listener = CliJsonEditorListener()
-    val session = JsonEditorSession(
-        apiAdapter = adapter,
-        listener = listener,
-        filePath = filePath,
-        requestListeners = listOf(TracingRequestListener(traceSession)),
-        askHandler = { question ->
-            println("\n  [?] $question")
-            print("  > ")
-            readlnOrNull()?.trim() ?: ""
-        }
-    )
+    val requestListeners = listOf(TracingRequestListener(traceSession))
+    val askHandler: suspend (String) -> String = { question ->
+        println("\n  [?] $question")
+        print("  > ")
+        readlnOrNull()?.trim() ?: ""
+    }
 
-    replLoop(session)
+    if (agentMode) {
+        val session = AgentJsonEditorSession(
+            apiAdapter = adapter,
+            listener = listener,
+            filePath = filePath,
+            requestListeners = requestListeners,
+            askHandler = askHandler
+        )
+        replLoop(session)
+    } else {
+        val session = JsonEditorSession(
+            apiAdapter = adapter,
+            listener = listener,
+            filePath = filePath,
+            requestListeners = requestListeners,
+            askHandler = askHandler
+        )
+        replLoop(session)
+    }
     traceSession.save()
 }
 
 private suspend fun replLoop(session: JsonEditorSession) {
+    while (true) {
+        print("\n> ")
+        val input = readlnOrNull()?.trim() ?: break
+
+        when (input.lowercase()) {
+            "exit", "quit" -> {
+                session.save()
+                println("Saved and exiting.")
+                break
+            }
+            "save" -> {
+                session.save()
+                println("Saved to ${session.filePath()}")
+            }
+            "show" -> {
+                println(session.currentDocument().toJsonString())
+            }
+            "" -> continue
+            else -> {
+                session.chat(input)
+            }
+        }
+    }
+}
+
+private suspend fun replLoop(session: AgentJsonEditorSession) {
     while (true) {
         print("\n> ")
         val input = readlnOrNull()?.trim() ?: break

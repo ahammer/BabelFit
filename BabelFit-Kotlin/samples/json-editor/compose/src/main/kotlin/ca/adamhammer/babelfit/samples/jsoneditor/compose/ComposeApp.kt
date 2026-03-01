@@ -104,6 +104,18 @@ private fun Toolbar(controller: ComposeEditorController) {
 
             Spacer(Modifier.weight(1f))
 
+            // Agent mode toggle
+            TextButton(
+                onClick = { controller.toggleAgentMode() },
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = if (controller.agentMode) AgentColor else DimText
+                ),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                modifier = Modifier.defaultMinSize(minHeight = 28.dp)
+            ) { Text(if (controller.agentMode) "Agent ●" else "Simple", fontSize = 11.sp) }
+
+            Spacer(Modifier.width(8.dp))
+
             // View mode toggle
             Row(horizontalArrangement = Arrangement.spacedBy(0.dp)) {
                 TextButton(

@@ -14,6 +14,7 @@ import ca.adamhammer.babelfit.debug.trace.TracingAdapter
 import ca.adamhammer.babelfit.debug.trace.TracingRequestListener
 import ca.adamhammer.babelfit.interfaces.ApiAdapter
 import ca.adamhammer.babelfit.samples.common.Vendor
+import ca.adamhammer.babelfit.samples.jsoneditor.api.AgentJsonEditorSession
 import ca.adamhammer.babelfit.samples.jsoneditor.api.JsonEditorListener
 import ca.adamhammer.babelfit.samples.jsoneditor.api.JsonEditorSession
 import ca.adamhammer.babelfit.samples.jsoneditor.model.JsonDocument
@@ -53,6 +54,9 @@ class ComposeEditorController(private val uiScope: CoroutineScope) : JsonEditorL
     var isDirty by mutableStateOf(false)
         private set
 
+    var agentMode by mutableStateOf(false)
+        private set
+
     var inputText by mutableStateOf("")
 
     private var savedDocument: JsonDocument = JsonDocument.empty()
@@ -65,6 +69,7 @@ class ComposeEditorController(private val uiScope: CoroutineScope) : JsonEditorL
     val traceSession = TraceSession()
 
     private var session: JsonEditorSession? = null
+    private var agentSession: AgentJsonEditorSession? = null
 
     private var pendingAsk: CompletableDeferred<String>? = null
 
@@ -91,6 +96,11 @@ class ComposeEditorController(private val uiScope: CoroutineScope) : JsonEditorL
 
     fun selectModel(m: String) {
         model = m
+        rebuildSession()
+    }
+
+    fun toggleAgentMode() {
+        agentMode = !agentMode
         rebuildSession()
     }
 
@@ -165,6 +175,7 @@ class ComposeEditorController(private val uiScope: CoroutineScope) : JsonEditorL
         document = doc
         isDirty = document != savedDocument
         session?.replaceDocument(doc)
+        agentSession?.replaceDocument(doc)
     }
 
     fun redo() {
@@ -172,6 +183,7 @@ class ComposeEditorController(private val uiScope: CoroutineScope) : JsonEditorL
         document = doc
         isDirty = document != savedDocument
         session?.replaceDocument(doc)
+        agentSession?.replaceDocument(doc)
     }
 
     val canUndo: Boolean get() = history.canUndo
@@ -206,14 +218,15 @@ class ComposeEditorController(private val uiScope: CoroutineScope) : JsonEditorL
         if (isBusy) return
         chatEntries.add(ChatEntry.UserMessage(text))
 
-        val s = session ?: run {
-            rebuildSession()
-            session
-        } ?: return
+        if (session == null && agentSession == null) rebuildSession()
 
         isBusy = true
         uiScope.launch(Dispatchers.IO) {
-            s.chat(text)
+            if (agentMode) {
+                agentSession?.chat(text)
+            } else {
+                session?.chat(text)
+            }
             isBusy = false
         }
     }
@@ -255,18 +268,33 @@ class ComposeEditorController(private val uiScope: CoroutineScope) : JsonEditorL
     private fun rebuildSession() {
         val path = filePath ?: "untitled.json"
         val currentDoc = document
-        session = JsonEditorSession(
-            apiAdapter = TracingAdapter(createAdapter(vendor, model), traceSession),
-            listener = this,
-            filePath = path,
-            autoSave = filePath != null,
-            requestListeners = listOf(usageTracker, TracingRequestListener(traceSession)),
-            askHandler = askHandler
-        )
-        // Restore the in-memory document — the session constructor may have
-        // loaded a stale copy from disk or created a fresh empty doc.
+        val adapter = TracingAdapter(createAdapter(vendor, model), traceSession)
+        val listeners = listOf(usageTracker, TracingRequestListener(traceSession))
+
+        if (agentMode) {
+            session = null
+            agentSession = AgentJsonEditorSession(
+                apiAdapter = adapter,
+                listener = this,
+                filePath = path,
+                autoSave = filePath != null,
+                requestListeners = listeners,
+                askHandler = askHandler
+            )
+            agentSession?.replaceDocument(currentDoc)
+        } else {
+            agentSession = null
+            session = JsonEditorSession(
+                apiAdapter = adapter,
+                listener = this,
+                filePath = path,
+                autoSave = filePath != null,
+                requestListeners = listeners,
+                askHandler = askHandler
+            )
+            session?.replaceDocument(currentDoc)
+        }
         document = currentDoc
-        session?.replaceDocument(currentDoc)
     }
 
     private fun createAdapter(vendor: Vendor, model: String): ApiAdapter = when (vendor) {

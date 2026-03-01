@@ -9,6 +9,7 @@ test {
 
 dependencies {
     implementation project(':babelfit-core')
+    implementation project(':babelfit-agents')
     implementation project(':samples-json-editor:models')
     implementation "org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3"
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0"

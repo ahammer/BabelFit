@@ -14,6 +14,7 @@ run {
 dependencies {
     implementation project(':babelfit-core')
     implementation project(':babelfit-openai')
+    implementation project(':babelfit-agents')
     implementation project(':babelfit-debug')
     implementation project(':samples-json-editor:models')
     implementation project(':samples-json-editor:api')
