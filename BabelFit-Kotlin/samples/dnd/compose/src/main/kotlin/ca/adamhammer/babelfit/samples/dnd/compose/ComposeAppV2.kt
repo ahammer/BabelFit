@@ -343,6 +343,14 @@ private fun StickyHeaderBar(controller: ComposeGameControllerV2, isPostmortem: B
 
                 Spacer(Modifier.weight(1f))
 
+                // Export trace
+                TextButton(
+                    onClick = { controller.exportTrace() },
+                    colors = ButtonDefaults.textButtonColors(contentColor = DimText)
+                ) {
+                    Text("Export Trace", fontSize = 14.sp)
+                }
+
                 // Usage pane toggle
                 TextButton(
                     onClick = { controller.showUsagePane = !controller.showUsagePane },

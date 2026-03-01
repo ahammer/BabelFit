@@ -1,8 +1,9 @@
 package ca.adamhammer.babelfit.samples.jsoneditor.cli
 
 import ca.adamhammer.babelfit.adapters.OpenAiAdapter
-import ca.adamhammer.babelfit.debug.DebugAdapter
-import ca.adamhammer.babelfit.debug.DebugSession
+import ca.adamhammer.babelfit.debug.trace.TraceSession
+import ca.adamhammer.babelfit.debug.trace.TracingAdapter
+import ca.adamhammer.babelfit.debug.trace.TracingRequestListener
 import ca.adamhammer.babelfit.samples.jsoneditor.api.JsonEditorListener
 import ca.adamhammer.babelfit.samples.jsoneditor.api.JsonEditorSession
 import ca.adamhammer.babelfit.samples.jsoneditor.model.JsonDocument
@@ -12,14 +13,14 @@ fun main(args: Array<String>) = runBlocking {
     val filePath = args.firstOrNull() ?: "test.json"
 
     val openAiAdapter = OpenAiAdapter()
-    val debugSession = DebugSession()
-    val adapter = DebugAdapter(openAiAdapter, debugSession)
+    val traceSession = TraceSession()
+    val adapter = TracingAdapter(openAiAdapter, traceSession)
 
     println("═══════════════════════════════════════════════════════")
     println("  BabelFit JSON Editor — Conversational Document Editing")
     println("═══════════════════════════════════════════════════════")
     println("  File: $filePath")
-    println("  Debug: ${debugSession.getSessionPath()}")
+    println("  Debug: ${traceSession.getSessionId()} (.btrace.json will be saved on exit)")
     println()
     println("  Commands: 'show' (print doc), 'save', 'exit'")
     println("  Or type naturally to edit the document.")
@@ -30,6 +31,7 @@ fun main(args: Array<String>) = runBlocking {
         apiAdapter = adapter,
         listener = listener,
         filePath = filePath,
+        requestListeners = listOf(TracingRequestListener(traceSession)),
         askHandler = { question ->
             println("\n  [?] $question")
             print("  > ")
@@ -38,6 +40,7 @@ fun main(args: Array<String>) = runBlocking {
     )
 
     replLoop(session)
+    traceSession.save()
 }
 
 private suspend fun replLoop(session: JsonEditorSession) {

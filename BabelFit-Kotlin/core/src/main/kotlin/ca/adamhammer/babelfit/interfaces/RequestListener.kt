@@ -18,4 +18,13 @@ interface RequestListener {
 
     /** Called when a request fails (after all retries are exhausted). */
     fun onRequestError(context: PromptContext, error: Exception, durationMs: Long) {}
+
+    /** Called when an individual execution attempt starts (including retries). */
+    fun onAttemptStart(context: PromptContext, attemptNumber: Int) {}
+
+    /** Called when an individual execution attempt completes successfully. */
+    fun onAttemptComplete(context: PromptContext, attemptNumber: Int, result: Any, durationMs: Long, usage: UsageInfo? = null) {}
+
+    /** Called when an individual execution attempt fails. */
+    fun onAttemptError(context: PromptContext, attemptNumber: Int, error: Exception, durationMs: Long) {}
 }

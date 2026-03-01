@@ -52,6 +52,9 @@ fun main() = application {
                 Item("Undo", onClick = { controller.undo() }, shortcut = KeyShortcut(Key.Z, ctrl = true))
                 Item("Redo", onClick = { controller.redo() }, shortcut = KeyShortcut(Key.Y, ctrl = true))
             }
+            Menu("Trace") {
+                Item("Export Trace\u2026", onClick = { controller.exportTrace() })
+            }
         }
         JsonEditorApp(controller)
 

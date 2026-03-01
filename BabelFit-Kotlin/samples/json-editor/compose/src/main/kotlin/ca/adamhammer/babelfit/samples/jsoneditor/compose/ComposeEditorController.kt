@@ -9,6 +9,9 @@ import ca.adamhammer.babelfit.UsageTracker
 import ca.adamhammer.babelfit.adapters.ClaudeAdapter
 import ca.adamhammer.babelfit.adapters.GeminiAdapter
 import ca.adamhammer.babelfit.adapters.OpenAiAdapter
+import ca.adamhammer.babelfit.debug.trace.TraceSession
+import ca.adamhammer.babelfit.debug.trace.TracingAdapter
+import ca.adamhammer.babelfit.debug.trace.TracingRequestListener
 import ca.adamhammer.babelfit.interfaces.ApiAdapter
 import ca.adamhammer.babelfit.samples.common.Vendor
 import ca.adamhammer.babelfit.samples.jsoneditor.api.JsonEditorListener
@@ -59,6 +62,8 @@ class ComposeEditorController(private val uiScope: CoroutineScope) : JsonEditorL
 
     val usageTracker = UsageTracker()
 
+    val traceSession = TraceSession()
+
     private var session: JsonEditorSession? = null
 
     private var pendingAsk: CompletableDeferred<String>? = null
@@ -91,6 +96,17 @@ class ComposeEditorController(private val uiScope: CoroutineScope) : JsonEditorL
 
     fun toggleViewMode() {
         viewMode = if (viewMode == ContentViewMode.TREE) ContentViewMode.RAW else ContentViewMode.TREE
+    }
+
+    fun exportTrace() {
+        val chooser = JFileChooser().apply {
+            fileFilter = FileNameExtensionFilter("BabelFit Trace files", "btrace.json")
+            dialogTitle = "Export Trace"
+            selectedFile = java.io.File("trace.btrace.json")
+        }
+        if (chooser.showSaveDialog(null) == JFileChooser.APPROVE_OPTION) {
+            traceSession.save(chooser.selectedFile)
+        }
     }
 
     // ── File operations ─────────────────────────────────────────────────
@@ -240,11 +256,11 @@ class ComposeEditorController(private val uiScope: CoroutineScope) : JsonEditorL
         val path = filePath ?: "untitled.json"
         val currentDoc = document
         session = JsonEditorSession(
-            apiAdapter = createAdapter(vendor, model),
+            apiAdapter = TracingAdapter(createAdapter(vendor, model), traceSession),
             listener = this,
             filePath = path,
             autoSave = filePath != null,
-            requestListeners = listOf(usageTracker),
+            requestListeners = listOf(usageTracker, TracingRequestListener(traceSession)),
             askHandler = askHandler
         )
         // Restore the in-memory document — the session constructor may have

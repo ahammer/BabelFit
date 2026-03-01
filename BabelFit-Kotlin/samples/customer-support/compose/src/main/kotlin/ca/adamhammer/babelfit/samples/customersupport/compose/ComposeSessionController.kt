@@ -7,6 +7,9 @@ import androidx.compose.runtime.setValue
 import ca.adamhammer.babelfit.adapters.OpenAiAdapter
 import ca.adamhammer.babelfit.adapters.ClaudeAdapter
 import ca.adamhammer.babelfit.adapters.GeminiAdapter
+import ca.adamhammer.babelfit.debug.trace.TraceSession
+import ca.adamhammer.babelfit.debug.trace.TracingAdapter
+import ca.adamhammer.babelfit.debug.trace.TracingRequestListener
 import ca.adamhammer.babelfit.interfaces.ApiAdapter
 import ca.adamhammer.babelfit.samples.common.Vendor
 import com.openai.models.ChatModel
@@ -50,16 +53,32 @@ class ComposeSessionController(
 
     private var session: SupportSession? = null
 
+    val traceSession = TraceSession()
+
     fun startSession() {
-        val adapter = createAdapter()
+        val adapter = TracingAdapter(createAdapter(), traceSession)
         val template = CompanyTemplate.loadFromResource()
         session = SupportSession(
             apiAdapter = adapter,
             listener = this,
             companyTemplate = template,
-            customerContext = customerContext
+            customerContext = customerContext,
+            requestListeners = listOf(TracingRequestListener(traceSession))
         )
         session?.startSession()
+    }
+
+    fun exportTrace() {
+        val chooser = javax.swing.JFileChooser().apply {
+            fileFilter = javax.swing.filechooser.FileNameExtensionFilter(
+                "BabelFit Trace files", "btrace.json"
+            )
+            dialogTitle = "Export Trace"
+            selectedFile = java.io.File("trace.btrace.json")
+        }
+        if (chooser.showSaveDialog(null) == javax.swing.JFileChooser.APPROVE_OPTION) {
+            traceSession.save(chooser.selectedFile)
+        }
     }
 
     fun sendMessage(text: String) {

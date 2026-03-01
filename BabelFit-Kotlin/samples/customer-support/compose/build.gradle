@@ -23,6 +23,7 @@ dependencies {
     implementation project(':babelfit-openai')
     implementation project(':babelfit-claude')
     implementation project(':babelfit-gemini')
+    implementation project(':babelfit-debug')
     implementation project(':samples-example-common')
     implementation project(':samples-customer-support:models')
     implementation project(':samples-customer-support:api')

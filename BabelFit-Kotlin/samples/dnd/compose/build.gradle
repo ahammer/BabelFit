@@ -24,6 +24,7 @@ dependencies {
     implementation project(':babelfit-claude')
     implementation project(':babelfit-gemini')
     implementation project(':babelfit-agents')
+    implementation project(':babelfit-debug')
     implementation project(':samples-example-common')
     implementation project(':samples-dnd:models')
     implementation project(':samples-dnd:api')

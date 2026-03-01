@@ -27,39 +27,54 @@ class ResilienceExecutor(
      *
      * @param rethrowCancellation when true, [CancellationException] is immediately re-thrown
      */
+    @Suppress("LongMethod")
     suspend fun <R : Any> execute(
         adapter: ApiAdapter,
         context: PromptContext,
         resultClass: KClass<R>,
         toolProviders: List<ToolProvider>
     ): R {
-        notifyStart(context)
+        // Embed a unique Request ID for listeners to trace
+        val requestId = java.util.UUID.randomUUID().toString()
+        var currentContext = context.with(ca.adamhammer.babelfit.context.TraceContextKeys.CURRENT_SPAN_ID, requestId)
+        
+        notifyStart(currentContext)
         val startMs = System.currentTimeMillis()
         var lastException: Exception? = null
         val maxAttempts = resilience.maxRetries + 1
-        var currentContext = context
         var accumulatedUsage: UsageInfo? = null
 
         for (attempt in 1..maxAttempts) {
+            val attemptStartMs = System.currentTimeMillis()
+            notifyAttemptStart(currentContext, attempt)
+            
+            // Allow trace listeners and adapters to know the exact attempt ID they are inside
+            val contextWithAttempt = currentContext.with(
+                ca.adamhammer.babelfit.context.TraceContextKeys.CURRENT_ATTEMPT, 
+                attempt
+            )
             try {
-                val response = executeWithTimeout(adapter, currentContext, resultClass, toolProviders)
+                val response = executeWithTimeout(adapter, contextWithAttempt, resultClass, toolProviders)
                 accumulatedUsage = mergeUsage(accumulatedUsage, response.usage)
 
                 val validator = resilience.resultValidator
                 if (validator != null) {
                     val validationResult = validator(response.result)
                     if (validationResult is ValidationResult.Invalid) {
-                        throw ResultValidationException(validationResult.reason, currentContext)
+                        throw ResultValidationException(validationResult.reason, contextWithAttempt)
                     } else if (validationResult == false) { // For backwards compatibility if validator returns Boolean
-                        throw ResultValidationException("Result validation failed on attempt $attempt", currentContext)
+                        throw ResultValidationException("Result validation failed on attempt $attempt", contextWithAttempt)
                     }
                 }
 
+                notifyAttemptComplete(currentContext, attempt, response.result, attemptStartMs, response.usage)
                 notifyComplete(currentContext, response.result, startMs, accumulatedUsage)
                 return response.result
             } catch (e: CancellationException) {
+                notifyAttemptError(currentContext, attempt, e, attemptStartMs)
                 throw e // Always rethrow CancellationException to respect structured concurrency
             } catch (e: ResultValidationException) {
+                notifyAttemptError(currentContext, attempt, e, attemptStartMs)
                 lastException = e
                 logger.warning { "Attempt $attempt/$maxAttempts failed: ${e.message}" }
                 
@@ -75,6 +90,7 @@ class ResilienceExecutor(
                     kotlinx.coroutines.delay(delayMs)
                 }
             } catch (e: Exception) {
+                notifyAttemptError(currentContext, attempt, e, attemptStartMs)
                 lastException = e
                 logger.warning { "Attempt $attempt/$maxAttempts failed: ${e.message}" }
                 
@@ -87,13 +103,23 @@ class ResilienceExecutor(
 
         val fallback = resilience.fallbackAdapter
         if (fallback != null) {
+            val attemptStartMs = System.currentTimeMillis()
+            val fallbackAttempt = maxAttempts + 1
+            notifyAttemptStart(currentContext, fallbackAttempt)
+            
+            val contextWithAttempt = currentContext.with(
+                ca.adamhammer.babelfit.context.TraceContextKeys.CURRENT_ATTEMPT, 
+                fallbackAttempt
+            )
             logger.info { "Primary adapter exhausted, trying fallback" }
             try {
-                val response = executeWithTimeout(fallback, currentContext, resultClass, toolProviders)
+                val response = executeWithTimeout(fallback, contextWithAttempt, resultClass, toolProviders)
                 accumulatedUsage = mergeUsage(accumulatedUsage, response.usage)
+                notifyAttemptComplete(currentContext, fallbackAttempt, response.result, attemptStartMs, response.usage)
                 notifyComplete(currentContext, response.result, startMs, accumulatedUsage)
                 return response.result
             } catch (e: Exception) {
+                notifyAttemptError(currentContext, fallbackAttempt, e, attemptStartMs)
                 val ex = BabelFitException("All attempts failed including fallback", e, currentContext)
                 notifyError(currentContext, ex, startMs)
                 throw ex
@@ -132,6 +158,22 @@ class ResilienceExecutor(
 
     fun notifyStart(context: PromptContext) {
         listeners.forEach { it.onRequestStart(context) }
+    }
+
+    private fun notifyAttemptStart(context: PromptContext, attempt: Int) {
+        listeners.forEach { it.onAttemptStart(context, attempt) }
+    }
+
+    private fun notifyAttemptComplete(
+        context: PromptContext, attempt: Int, result: Any, startMs: Long, usage: UsageInfo? = null
+    ) {
+        val duration = System.currentTimeMillis() - startMs
+        listeners.forEach { it.onAttemptComplete(context, attempt, result, duration, usage) }
+    }
+
+    private fun notifyAttemptError(context: PromptContext, attempt: Int, error: Exception, startMs: Long) {
+        val duration = System.currentTimeMillis() - startMs
+        listeners.forEach { it.onAttemptError(context, attempt, error, duration) }
     }
 
     fun notifyComplete(context: PromptContext, result: Any, startMs: Long, usage: UsageInfo? = null) {

@@ -167,6 +167,18 @@ private fun Sidebar(controller: ComposeSessionController, modifier: Modifier) {
                     }
                 }
             }
+
+            Spacer(Modifier.weight(1f))
+
+            Button(
+                onClick = { controller.exportTrace() },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    backgroundColor = MaterialTheme.colors.primary
+                )
+            ) {
+                Text("Export Trace")
+            }
         }
     }
 }

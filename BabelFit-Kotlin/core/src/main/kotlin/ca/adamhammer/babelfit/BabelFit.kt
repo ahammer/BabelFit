@@ -1,6 +1,8 @@
 package ca.adamhammer.babelfit
 
 import ca.adamhammer.babelfit.annotations.Memorize
+import ca.adamhammer.babelfit.context.TraceContextElement
+import ca.adamhammer.babelfit.context.TraceContextKeys
 import ca.adamhammer.babelfit.interfaces.ApiAdapter
 import ca.adamhammer.babelfit.interfaces.ContextBuilder
 import ca.adamhammer.babelfit.interfaces.Interceptor
@@ -22,6 +24,7 @@ import java.util.concurrent.Future
 import java.util.concurrent.Semaphore
 import java.util.logging.Logger
 import kotlin.coroutines.Continuation
+import kotlin.coroutines.coroutineContext
 import kotlin.coroutines.intrinsics.startCoroutineUninterceptedOrReturn
 import kotlin.reflect.KClass
 import kotlin.reflect.jvm.kotlinFunction
@@ -177,6 +180,13 @@ class BabelFit(
         for (interceptor in interceptors) {
             context = interceptor.intercept(context)
         }
+        
+        // Propagate Coroutine trace context if present
+        val traceParent = coroutineContext[TraceContextElement]
+        if (traceParent != null) {
+            context = context.with(TraceContextKeys.PARENT_SPAN_ID, traceParent.currentSpanId)
+        }
+        
         return context
     }
 }

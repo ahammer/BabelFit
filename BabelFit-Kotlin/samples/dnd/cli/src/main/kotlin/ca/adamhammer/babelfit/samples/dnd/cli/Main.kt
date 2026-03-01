@@ -1,8 +1,9 @@
 package ca.adamhammer.babelfit.samples.dnd.cli
 
 import ca.adamhammer.babelfit.adapters.OpenAiAdapter
-import ca.adamhammer.babelfit.debug.DebugAdapter
-import ca.adamhammer.babelfit.debug.DebugSession
+import ca.adamhammer.babelfit.debug.trace.TraceSession
+import ca.adamhammer.babelfit.debug.trace.TracingAdapter
+import ca.adamhammer.babelfit.debug.trace.TracingRequestListener
 import ca.adamhammer.babelfit.model.ImageResult
 import ca.adamhammer.babelfit.samples.dnd.*
 import ca.adamhammer.babelfit.samples.dnd.api.*
@@ -12,21 +13,25 @@ import kotlinx.coroutines.runBlocking
 
 fun main() = runBlocking {
     val openAiAdapter = OpenAiAdapter()
-    val debugSession = DebugSession()
-    val adapter = DebugAdapter(openAiAdapter, debugSession)
+    val traceSession = TraceSession()
+    val adapter = TracingAdapter(openAiAdapter, traceSession)
 
     println("═══════════════════════════════════════════════════════")
     println("  ⚔  BABELFIT QUEST — Automated Agentic D&D Demo  ⚔")
     println("═══════════════════════════════════════════════════════")
-    println("  Debug session: ${debugSession.getSessionPath()}")
+    println("  Debug session: ${traceSession.getSessionId()} (.btrace.json will be saved on exit)")
     println()
 
-    val world = createAutomatedParty(adapter, partySize = 3)
+    val world = createAutomatedParty(adapter, 3, listOf(TracingRequestListener(traceSession)))
 
     val listener = CliGameListener()
-    val session = GameSession(adapter, listener)
+    val session = GameSession(adapter, listener, requestListeners = listOf(TracingRequestListener(traceSession)))
 
-    session.startGame(world)
+    try {
+        session.startGame(world)
+    } finally {
+        traceSession.save()
+    }
 }
 
 class CliGameListener : GameEventListener {
@@ -106,9 +111,14 @@ class CliGameListener : GameEventListener {
     }
 }
 
-private fun createAutomatedParty(adapter: DebugAdapter, partySize: Int): World {
+private fun createAutomatedParty(
+    adapter: TracingAdapter, 
+    partySize: Int, 
+    listeners: List<ca.adamhammer.babelfit.interfaces.RequestListener>
+): World {
     val backstoryDm = babelFit<DungeonMasterAPI> {
         adapter(adapter)
+        listeners.forEach { listener(it) }
         resilience { maxRetries = 1 }
     }.api
 

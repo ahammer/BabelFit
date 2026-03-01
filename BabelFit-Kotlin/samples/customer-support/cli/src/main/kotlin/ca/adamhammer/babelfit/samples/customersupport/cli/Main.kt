@@ -1,8 +1,9 @@
 package ca.adamhammer.babelfit.samples.customersupport.cli
 
 import ca.adamhammer.babelfit.adapters.OpenAiAdapter
-import ca.adamhammer.babelfit.debug.DebugAdapter
-import ca.adamhammer.babelfit.debug.DebugSession
+import ca.adamhammer.babelfit.debug.trace.TraceSession
+import ca.adamhammer.babelfit.debug.trace.TracingAdapter
+import ca.adamhammer.babelfit.debug.trace.TracingRequestListener
 import ca.adamhammer.babelfit.samples.customersupport.api.SupportEventListener
 import ca.adamhammer.babelfit.samples.customersupport.api.SupportSession
 import ca.adamhammer.babelfit.samples.customersupport.models.AgentType
@@ -13,8 +14,8 @@ import kotlinx.coroutines.runBlocking
 
 fun main() = runBlocking {
     val openAiAdapter = OpenAiAdapter()
-    val debugSession = DebugSession()
-    val adapter = DebugAdapter(openAiAdapter, debugSession)
+    val traceSession = TraceSession()
+    val adapter = TracingAdapter(openAiAdapter, traceSession)
 
     val template = CompanyTemplate.loadFromResource()
     val customer = CustomerContext(
@@ -31,7 +32,7 @@ fun main() = runBlocking {
     println("  Company: ${template.company}")
     println("  Customer: ${customer.name} (${customer.accountId})")
     println("  Product: ${template.product} — ${customer.productModel}")
-    println("  Debug: ${debugSession.getSessionPath()}")
+    println("  Debug: ${traceSession.getSessionId()} (.btrace.json will be saved on exit)")
     println()
     println("  Type your support request. Type 'exit' to quit.")
     println("═══════════════════════════════════════════════════════")
@@ -41,7 +42,8 @@ fun main() = runBlocking {
         apiAdapter = adapter,
         listener = listener,
         companyTemplate = template,
-        customerContext = customer
+        customerContext = customer,
+        requestListeners = listOf(TracingRequestListener(traceSession))
     )
     session.startSession()
 
@@ -52,6 +54,7 @@ fun main() = runBlocking {
             "exit", "quit" -> {
                 session.endSession()
                 println("Session ended. Goodbye!")
+                traceSession.save()
                 break
             }
             "" -> continue

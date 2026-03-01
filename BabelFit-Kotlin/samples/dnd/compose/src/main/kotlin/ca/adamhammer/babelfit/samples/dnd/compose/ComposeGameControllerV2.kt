@@ -10,6 +10,9 @@ import ca.adamhammer.babelfit.adapters.ClaudeAdapter
 import ca.adamhammer.babelfit.adapters.GeminiAdapter
 import ca.adamhammer.babelfit.adapters.OpenAiAdapter
 import ca.adamhammer.babelfit.adapters.RoutingAdapter
+import ca.adamhammer.babelfit.debug.trace.TraceSession
+import ca.adamhammer.babelfit.debug.trace.TracingAdapter
+import ca.adamhammer.babelfit.debug.trace.TracingRequestListener
 import ca.adamhammer.babelfit.interfaces.ApiAdapter
 import ca.adamhammer.babelfit.model.ImageResult
 import ca.adamhammer.babelfit.samples.dnd.CharacterUtils
@@ -50,6 +53,9 @@ class ComposeGameControllerV2(private val uiScope: CoroutineScope) : GameEventLi
     val usageTracker = UsageTracker()
 
     var showUsagePane by mutableStateOf(false)
+
+    var traceSession by mutableStateOf<TraceSession?>(null)
+        private set
 
     // Track pending action per character so we can merge action + outcome
     private val pendingActions = mutableMapOf<String, TimelineEntry.CharacterAction>()
@@ -113,14 +119,20 @@ class ComposeGameControllerV2(private val uiScope: CoroutineScope) : GameEventLi
                 val sessionAdapter = RoutingAdapter { context ->
                     if (context.methodName == "generateImage") imageAdapter else textAdapter
                 }
-                val initialWorld = buildInitialWorld(setupState, sessionAdapter)
+                val newTraceSession = TraceSession()
+                traceSession = newTraceSession
+                val tracingAdapter = TracingAdapter(sessionAdapter, newTraceSession)
+                val initialWorld = buildInitialWorld(setupState, tracingAdapter)
                 val session = GameSession(
-                    apiAdapter = sessionAdapter,
+                    apiAdapter = tracingAdapter,
                     listener = this@ComposeGameControllerV2,
                     maxTurns = setupState.maxRounds,
                     enableImages = setupState.enableImages,
                     artStyle = setupState.artStyle,
-                    requestListeners = listOf(usageTracker)
+                    requestListeners = listOf(
+                        usageTracker,
+                        TracingRequestListener(newTraceSession)
+                    )
                 )
                 uiScope.launch {
                     world = initialWorld
@@ -159,6 +171,20 @@ class ComposeGameControllerV2(private val uiScope: CoroutineScope) : GameEventLi
         activeTurnCharacterName = null
         isBusy = false
         screen = AppScreen.SETUP
+    }
+
+    fun exportTrace() {
+        val session = traceSession ?: return
+        val chooser = javax.swing.JFileChooser().apply {
+            fileFilter = javax.swing.filechooser.FileNameExtensionFilter(
+                "BabelFit Trace files", "btrace.json"
+            )
+            dialogTitle = "Export Trace"
+            selectedFile = java.io.File("trace.btrace.json")
+        }
+        if (chooser.showSaveDialog(null) == javax.swing.JFileChooser.APPROVE_OPTION) {
+            session.save(chooser.selectedFile)
+        }
     }
 
     // ── GameEventListener ───────────────────────────────────────────────────
