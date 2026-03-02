@@ -10,7 +10,9 @@ import ca.adamhammer.babelfit.agents.graph.AgentGraph
 import ca.adamhammer.babelfit.model.ImageResult
 import ca.adamhammer.babelfit.samples.dnd.*
 import ca.adamhammer.babelfit.samples.dnd.model.*
+import ca.adamhammer.babelfit.BabelFitInstance
 import ca.adamhammer.babelfit.babelFit
+import ca.adamhammer.babelfit.utils.toJsonString
 import java.io.File
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -39,7 +41,8 @@ class GameSession(
     private val maxTurnsConfigured = maxTurns.coerceIn(DEFAULT_MAX_TURNS, MAX_ALLOWED_TURNS)
 
     private lateinit var world: World
-    private lateinit var dm: DungeonMasterAPI
+    private lateinit var dmInstance: BabelFitInstance<DungeonMasterAPI>
+    private val dm: DungeonMasterAPI get() = dmInstance.api
     private lateinit var aiAgents: Map<String, GraphAgent<PlayerAgentAPI>>
     private val turnStates: MutableMap<String, TurnState> = mutableMapOf()
     private val turnHistories: MutableMap<String, MutableList<String>> = mutableMapOf()
@@ -51,7 +54,7 @@ class GameSession(
     suspend fun startGame(initialWorld: World) {
         world = initialWorld.copy(maxRounds = maxTurnsConfigured)
 
-        dm = babelFit<DungeonMasterAPI> {
+        dmInstance = babelFit<DungeonMasterAPI> {
             adapter(apiAdapter)
             addInterceptor(WorldStateInterceptor { world })
             requestListeners.forEach { listener(it) }
@@ -69,7 +72,7 @@ class GameSession(
                     }
                 }
             }
-        }.api
+        }
 
         openingScene = buildWorldSetup()
         aiAgents = buildAiAgents(world)
@@ -210,6 +213,7 @@ class GameSession(
 
             val actionProposals = dm.proposeActionOutcomes(currentStats.name, action).get()
             val selectedAction = weightedRandomSelect(actionProposals.candidates) { it.engagementScore }
+            dmInstance.memoryStore.put("Last action proposals", selectedAction.toJsonString())
             val result = selectedAction.toActionResult()
             val actionSelLog = "Round ${world.round}: \uD83C\uDFAF ${currentStats.name} outcome '${selectedAction.category}' " +
                 "(score: ${selectedAction.engagementScore}/10)"
@@ -220,7 +224,7 @@ class GameSession(
             world = applyPlayerStateUpdate(world, currentStats.name, playerAction)
             
             val logEntry = "Round ${world.round}: ${currentStats.name} — $action → " +
-                (if (finalResult.success) "success" else "failure") + ". DM: ${finalResult.narrative}"
+                (if (finalResult.success) "success" else "failure") + ". DM: ${finalResult.narrative.take(150)}"
             
             characterPreviousActions.getOrPut(currentStats.name) { mutableListOf() }
                 .apply { add(logEntry); if (size > 5) removeFirst() }

@@ -159,8 +159,8 @@ class WorldStateInterceptor(private val isDm: Boolean = true, private val worldP
      * summarize older entries to a single line each (just round + character + action type).
      */
     private fun summarizeActionLog(actionLog: List<String>): List<String> {
-        if (actionLog.size <= 15) return actionLog
-        val recentCount = 15
+        if (actionLog.size <= 8) return actionLog
+        val recentCount = 8
         val old = actionLog.dropLast(recentCount)
         val recent = actionLog.takeLast(recentCount)
         val summaryPattern = Regex("""Round (\d+): (.+?) — (.+?) →.*""")
@@ -257,12 +257,50 @@ class WorldStateInterceptor(private val isDm: Boolean = true, private val worldP
             )
         }
 
-        // Serialize a summarized world: truncate action log for prompt display
+        // Serialize a summarized world: truncate action log and strip fields already shown in readable sections
         val summarizedWorld = world.copy(
             actionLog = summarizeActionLog(world.actionLog),
-            whisperLog = world.whisperLog.takeLast(5)
+            whisperLog = emptyList(),
+            lore = world.lore.copy(
+                campaignPremise = "",
+                plotHooks = emptyList(),
+                factions = emptyList(),
+                npcs = emptyList()
+            )
         )
         val worldJson = json.encodeToString(summarizedWorld)
+
+        // Player agents get a lean prompt — no full world JSON, no shared rulebook
+        if (!isDm) {
+            val partySummary = world.party.joinToString("\n") { c ->
+                "- ${c.name} (${c.race} ${c.characterClass}): HP ${c.hp}/${c.maxHp}, Status: ${c.status}"
+            }
+            val recentActions = world.actionLog.takeLast(5).joinToString("\n") { "- $it" }
+            val relevantWhispers = world.whisperLog.takeLast(5)
+                .joinToString("\n") { "- R${it.round} ${it.from} -> ${it.to}: ${it.message}" }
+                .ifBlank { "- None yet" }
+            return context.withPart("world-state", ca.adamhammer.babelfit.model.PromptPart.KNOWLEDGE, """
+                |# CURRENT WORLD STATE
+                |$dmInstructions
+                |## Current Location: ${world.location.name}
+                |${world.location.description}
+                |Exits: ${world.location.exits.joinToString(", ").ifBlank { "None visible" }}
+                |NPCs present: ${world.location.npcs.joinToString(", ").ifBlank { "None" }}
+                |
+                |## Party (Round ${world.round}/${world.maxRounds})
+                |$partySummary
+                |
+                |## Recent Events
+                |${recentActions.ifBlank { "- None yet" }}
+                |
+                |## Whisper Log (Recent)
+                |$relevantWhispers
+                |
+                |## Active Quests
+                |${world.questLog.takeLast(4).joinToString("\n") { "- $it" }.ifBlank { "- None yet" }}
+            """.trimMargin()
+            )
+        }
 
         return context.withPart("world-state", ca.adamhammer.babelfit.model.PromptPart.KNOWLEDGE, """
                 |${GameRules.SHARED_RULEBOOK}

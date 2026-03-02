@@ -54,7 +54,6 @@ interface DungeonMasterAPI {
         description = "Four diverse action outcome candidates with engagement scores",
         responseClass = ActionOutcomeProposals::class
     )
-    @Memorize(label = "Last action proposals")
     fun proposeActionOutcomes(
         @AiParameter(description = "Name of the character performing the action")
         characterName: String,
