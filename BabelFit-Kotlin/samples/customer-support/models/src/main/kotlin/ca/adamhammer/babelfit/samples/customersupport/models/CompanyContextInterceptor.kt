@@ -44,8 +44,6 @@ class CompanyContextInterceptor(
             }
         }
 
-        return context.copy(
-            systemInstructions = context.systemInstructions + injection
-        )
+        return context.withPart("company-context", ca.adamhammer.babelfit.model.PromptPart.KNOWLEDGE, injection.trimEnd())
     }
 }

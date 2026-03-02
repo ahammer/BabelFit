@@ -2,6 +2,7 @@ package ca.adamhammer.babelfit.agents.graph
 
 import ca.adamhammer.babelfit.BabelFitInstance
 import ca.adamhammer.babelfit.agents.AgentDispatcher
+import ca.adamhammer.babelfit.agents.AiArg
 import ca.adamhammer.babelfit.agents.AiDecision
 import ca.adamhammer.babelfit.agents.DecidingAgentAPI
 import ca.adamhammer.babelfit.agents.decide
@@ -30,27 +31,53 @@ import java.util.logging.Logger
 class GraphAgent<T : Any>(
     private val apiInstance: BabelFitInstance<T>,
     private val decider: DecidingAgentAPI,
-    private val graph: AgentGraph<T>
+    private val graph: AgentGraph<T>,
+    private val initialArgs: Map<String, String> = emptyMap()
 ) {
     private val logger = Logger.getLogger(GraphAgent::class.java.name)
     private val dispatcher = AgentDispatcher(apiInstance)
     private var currentNode: String = graph.startNode
+    private var isFirstStep = true
+    private var lastStepValue: String? = null
+
+    /** Backward-compatible constructor without initialArgs. */
+    constructor(
+        apiInstance: BabelFitInstance<T>,
+        decider: DecidingAgentAPI,
+        graph: AgentGraph<T>
+    ) : this(apiInstance, decider, graph, emptyMap())
 
     /** Returns the current node in the graph. */
     val current: String get() = currentNode
 
     /** Reset the agent to the starting node. */
-    fun reset() { currentNode = graph.startNode }
+    fun reset() {
+        currentNode = graph.startNode
+        isFirstStep = true
+        lastStepValue = null
+    }
 
     /** Execute one step: dispatch the current node, then transition. Blocking. */
     fun step(): AgentDispatcher.DispatchResult = runBlocking { stepSuspend() }
 
     /** Execute one step: dispatch the current node, then transition. Suspending. */
     suspend fun stepSuspend(): AgentDispatcher.DispatchResult {
-        // 1. Dispatch the current node
+        // 1. Dispatch the current node (use initialArgs on the first step, chain results after)
+        val args = if (isFirstStep && initialArgs.isNotEmpty()) {
+            isFirstStep = false
+            initialArgs.map { (k, v) -> AiArg(k, v) }
+        } else if (!isFirstStep && lastStepValue != null) {
+            listOf(AiArg("input", lastStepValue!!))
+        } else {
+            isFirstStep = false
+            emptyList()
+        }
         val result = dispatcher.dispatchWithMetadata(
-            AiDecision(method = currentNode, args = emptyList())
+            AiDecision(method = currentNode, args = args)
         )
+
+        // Capture result for next step
+        lastStepValue = result.value?.toString()
 
         // 2. If terminal, we're done
         if (graph.isTerminal(currentNode)) {

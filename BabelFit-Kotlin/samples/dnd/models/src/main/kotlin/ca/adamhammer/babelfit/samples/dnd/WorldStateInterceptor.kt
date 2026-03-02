@@ -200,9 +200,7 @@ class WorldStateInterceptor(private val isDm: Boolean = true, private val worldP
             """.trimMargin()
         }
 
-        return context.copy(
-            systemInstructions = context.systemInstructions + """
-                |
+        return context.withPart("world-state", ca.adamhammer.babelfit.model.PromptPart.KNOWLEDGE, """
                 |${GameRules.SHARED_RULEBOOK}
                 |
                 |# CURRENT WORLD STATE

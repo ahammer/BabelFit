@@ -28,8 +28,6 @@ class HandoffContextInterceptor(
             }
         }
 
-        return context.copy(
-            systemInstructions = context.systemInstructions + injection
-        )
+        return context.withPart("handoff-context", ca.adamhammer.babelfit.model.PromptPart.HINTS, injection.trimEnd())
     }
 }

@@ -6,7 +6,9 @@ import ca.adamhammer.babelfit.model.ToolDefinition
 import ca.adamhammer.babelfit.model.ToolResult
 import ca.adamhammer.babelfit.samples.jsoneditor.model.JsonDocument
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
 class JsonToolProvider(
@@ -28,6 +30,18 @@ class JsonToolProvider(
                 "type": "object",
                 "properties": { $props },
                 "required": [$req],
+                "additionalProperties": false
+            }"""
+        }
+
+        private fun optionalSchema(vararg fields: Pair<String, String>): String {
+            val props = fields.joinToString(",\n                    ") { (n, d) ->
+                "\"$n\": { \"type\": \"string\", \"description\": \"$d\" }"
+            }
+            return """{
+                "type": "object",
+                "properties": { $props },
+                "required": [],
                 "additionalProperties": false
             }"""
         }
@@ -71,6 +85,12 @@ class JsonToolProvider(
                 inputSchema = schema("key" to "The key name to search for throughout the document")
             ),
             ToolDefinition(
+                name = "json_get_document",
+                description = "Get a formatted snapshot of the JSON document with metadata (structure, node count, depth). " +
+                    "Optionally pass a path to get only a subtree. Use this to inspect the document before editing.",
+                inputSchema = optionalSchema("path" to "Optional JSON Pointer path for subtree. Use '' or omit for full document.")
+            ),
+            ToolDefinition(
                 name = "explain",
                 description = "Display a message to the user. Use for ALL communication — " +
                     "summaries, confirmations, answers, error reports. Never use freeform text.",
@@ -98,6 +118,7 @@ class JsonToolProvider(
                 "json_move" -> handleMove(call, argsObj)
                 "json_list" -> handleList(call, argsObj)
                 "json_query" -> handleQuery(call, argsObj)
+                "json_get_document" -> handleGetDocument(call, argsObj)
                 "explain" -> handleExplain(call, argsObj)
                 "ask" -> handleAsk(call, argsObj)
                 else -> errorResult(call, "Unknown tool: ${call.toolName}")
@@ -153,6 +174,25 @@ class JsonToolProvider(
         val result = if (paths.isEmpty()) "No paths found containing key '$key'"
         else paths.joinToString("\n")
         return ToolResult(id = call.id, toolName = call.toolName, content = result)
+    }
+
+    private fun handleGetDocument(call: ToolCall, args: kotlinx.serialization.json.JsonObject): ToolResult {
+        val path = args["path"]?.jsonPrimitive?.content ?: ""
+        val doc = docProvider()
+        val topLevel = when (val r = doc.root) {
+            is JsonObject -> "Object with keys: ${r.keys.joinToString(", ")}"
+            is JsonArray -> "Array with ${r.size} elements"
+            else -> "Primitive value"
+        }
+        val targetNode = if (path.isBlank() || path == "/") doc.root else doc.getAtPath(path)
+            ?: return errorResult(call, "No value found at path: $path")
+        val pretty = Json { prettyPrint = true }.encodeToString(JsonElement.serializer(), targetNode)
+        val header = if (path.isBlank() || path == "/") {
+            "Structure: $topLevel | Nodes: ${doc.nodeCount()} | Depth: ${doc.depth()}"
+        } else {
+            "Subtree at: $path"
+        }
+        return ToolResult(id = call.id, toolName = call.toolName, content = "$header\n$pretty")
     }
 
     private fun handleExplain(call: ToolCall, args: kotlinx.serialization.json.JsonObject): ToolResult {

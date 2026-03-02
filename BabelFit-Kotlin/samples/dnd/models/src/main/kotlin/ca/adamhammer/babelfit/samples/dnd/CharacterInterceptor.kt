@@ -38,9 +38,7 @@ class CharacterInterceptor(private val characterProvider: () -> Character) : Int
             val m = (score - 10) / 2
             return if (m >= 0) "+$m" else "$m"
         }
-        return context.copy(
-            systemInstructions = context.systemInstructions + """
-                |
+        return context.withPart("character-identity", ca.adamhammer.babelfit.model.PromptPart.IDENTITY, """
                 |# YOUR CHARACTER
                 |You ARE ${c.name}, a ${c.race} ${c.characterClass} (Level ${c.level}).
                 |You must stay in character at all times. Speak and act as ${c.name} would.

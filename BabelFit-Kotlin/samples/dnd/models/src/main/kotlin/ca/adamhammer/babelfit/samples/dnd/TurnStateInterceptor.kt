@@ -27,9 +27,7 @@ class TurnStateInterceptor(
                 |Look for new opportunities, react to new events, or build on what you learned.
                 |Repeating the same action will have diminishing returns — the DM will escalate consequences."""
         } else ""
-        return context.copy(
-            systemInstructions = context.systemInstructions + """
-                |
+        return context.withPart("turn-progress", ca.adamhammer.babelfit.model.PromptPart.TURN_STATE, """
                 |## Turn Progress
                 |- Phase: ${state.phase}
                 |- Steps used: ${state.stepsUsed}/${state.stepsBudget}

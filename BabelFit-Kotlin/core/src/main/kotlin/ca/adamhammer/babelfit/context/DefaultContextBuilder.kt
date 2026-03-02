@@ -16,12 +16,13 @@ class DefaultContextBuilder : ContextBuilder {
     override fun build(request: BabelFitRequest): PromptContext {
         val methodInvocation = request.descriptor.toJsonInvocationString()
 
-        return PromptContext(
-            systemInstructions = SYSTEM_PREAMBLE,
+        val ctx = PromptContext(
             methodInvocation = methodInvocation,
             memory = request.memory.toMap(),
             methodName = request.descriptor.name
         )
+
+        return ctx.withPart("system-preamble", ca.adamhammer.babelfit.model.PromptPart.PREAMBLE, SYSTEM_PREAMBLE)
     }
 
     companion object {

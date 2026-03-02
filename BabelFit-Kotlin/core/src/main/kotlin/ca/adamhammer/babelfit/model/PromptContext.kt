@@ -60,20 +60,87 @@ class TypedKey<T>(val name: String) {
 }
 
 /**
+ * A named, ordered section of system instructions.
+ * Parts are deduplicated by [key] and ordered by [priority] when compiled.
+ */
+data class PromptPart(
+    /** Unique identity — last-write-wins for same key. */
+    val key: String,
+    /** Lower priority = earlier in the compiled prompt. Default 500 (middle). */
+    val priority: Int = DEFAULT_PRIORITY,
+    /** The text content of this part. */
+    val content: String
+) : Comparable<PromptPart> {
+    override fun compareTo(other: PromptPart): Int =
+        compareValuesBy(this, other, { it.priority }, { it.key })
+
+    companion object {
+        const val DEFAULT_PRIORITY = 500
+
+        // Well-known priority tiers
+        const val PREAMBLE = 100      // Core system rules (DefaultContextBuilder)
+        const val IDENTITY = 200      // Who the AI is (CharacterInterceptor)
+        const val KNOWLEDGE = 300     // Domain knowledge (CompanyContext, WorldState)
+        const val DOCUMENT = 400      // Current document/state
+        const val RULES = 500         // Operation-specific rules
+        const val WORKFLOW = 600      // Agent workflow state
+        const val TURN_STATE = 700    // Turn/step progress
+        const val HINTS = 800         // Ephemeral hints, warnings
+    }
+}
+
+/**
  * The assembled context that will be sent to an AI adapter.
  * Built by a [ca.adamhammer.babelfit.interfaces.ContextBuilder] and
  * optionally modified by [ca.adamhammer.babelfit.interfaces.Interceptor]s.
  */
 data class PromptContext(
-    val systemInstructions: String,
-    val methodInvocation: String,
-    val memory: Map<String, String>,
+    val parts: List<PromptPart> = emptyList(),
+    val methodInvocation: String = "",
+    val memory: Map<String, String> = emptyMap(),
     val properties: Map<String, Any> = emptyMap(),
     val availableTools: List<ToolDefinition> = emptyList(),
     val conversationHistory: List<Message> = emptyList(),
     /** The name of the proxy method that initiated this request. Useful for routing. */
     val methodName: String = ""
 ) {
+    /**
+     * Backward compatibility constructor for old callers.
+     * Maps the single flat string into a legacy `PromptPart`.
+     */
+    @Deprecated("Use the parts constructor instead", ReplaceWith("PromptContext(parts = listOf(PromptPart(\"legacy\", PromptPart.PREAMBLE, systemInstructions)), methodInvocation, memory, properties, availableTools, conversationHistory, methodName)"))
+    constructor(
+        systemInstructions: String,
+        methodInvocation: String = "",
+        memory: Map<String, String> = emptyMap(),
+        properties: Map<String, Any> = emptyMap(),
+        availableTools: List<ToolDefinition> = emptyList(),
+        conversationHistory: List<Message> = emptyList(),
+        methodName: String = ""
+    ) : this(
+        parts = listOf(PromptPart("legacy", PromptPart.PREAMBLE, systemInstructions)),
+        methodInvocation = methodInvocation,
+        memory = memory,
+        properties = properties,
+        availableTools = availableTools,
+        conversationHistory = conversationHistory,
+        methodName = methodName
+    )
+
+    /**
+     * Compile parts into final system instructions.
+     * - Deduplicate by key (last-write-wins)
+     * - Sort by priority (ascending = earlier in prompt)
+     * - Join with section separators
+     */
+    val systemInstructions: String
+        get() = parts
+            .groupBy { it.key }
+            .mapValues { (_, dups) -> dups.last() }
+            .values
+            .sorted()
+            .joinToString("\n\n") { it.content.trim() }
+
     /** Read a typed property, returning null if absent or of the wrong type. */
     @Suppress("UNCHECKED_CAST")
     operator fun <T> get(key: TypedKey<T>): T? = properties[key.name] as? T
@@ -81,4 +148,12 @@ data class PromptContext(
     /** Return a copy with the given typed property set. */
     fun <T : Any> with(key: TypedKey<T>, value: T): PromptContext =
         copy(properties = properties + (key.name to value))
+
+    /** Add or replace a part by key. */
+    fun withPart(part: PromptPart): PromptContext =
+        copy(parts = parts + part)
+
+    /** Add or replace a part using convenience params. */
+    fun withPart(key: String, priority: Int = PromptPart.DEFAULT_PRIORITY, content: String): PromptContext =
+        withPart(PromptPart(key, priority, content))
 }

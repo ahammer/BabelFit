@@ -76,7 +76,12 @@ class AgentJsonEditorSession(
         return try {
             conversationHistory.addUserMessage(userMessage)
 
-            val agent = GraphAgent(agentInstance, decider, graph)
+            val agent = GraphAgent(
+                agentInstance,
+                decider,
+                graph,
+                initialArgs = mapOf("userMessage" to userMessage)
+            )
             val result = agent.runSuspend(maxSteps)
 
             val response = try {

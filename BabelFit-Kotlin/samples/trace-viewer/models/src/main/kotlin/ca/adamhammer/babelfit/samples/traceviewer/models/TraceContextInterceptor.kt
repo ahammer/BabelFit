@@ -25,8 +25,6 @@ class TraceContextInterceptor(
             }
         }
 
-        return context.copy(
-            systemInstructions = context.systemInstructions + injection
-        )
+        return context.withPart("trace-context", ca.adamhammer.babelfit.model.PromptPart.DOCUMENT, injection.trimEnd())
     }
 }
