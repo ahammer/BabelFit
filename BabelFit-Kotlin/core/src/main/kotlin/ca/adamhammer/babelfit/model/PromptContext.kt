@@ -108,7 +108,13 @@ data class PromptContext(
      * Backward compatibility constructor for old callers.
      * Maps the single flat string into a legacy `PromptPart`.
      */
-    @Deprecated("Use the parts constructor instead", ReplaceWith("PromptContext(parts = listOf(PromptPart(\"legacy\", PromptPart.PREAMBLE, systemInstructions)), methodInvocation, memory, properties, availableTools, conversationHistory, methodName)"))
+    @Deprecated(
+        "Use the parts constructor instead",
+        ReplaceWith(
+            "PromptContext(parts = listOf(PromptPart(\"legacy\", PromptPart.PREAMBLE, systemInstructions)), " +
+                "methodInvocation, memory, properties, availableTools, conversationHistory, methodName)"
+        )
+    )
     constructor(
         systemInstructions: String,
         methodInvocation: String = "",

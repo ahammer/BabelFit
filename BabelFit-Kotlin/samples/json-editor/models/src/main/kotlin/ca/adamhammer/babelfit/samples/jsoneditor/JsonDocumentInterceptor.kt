@@ -2,6 +2,7 @@ package ca.adamhammer.babelfit.samples.jsoneditor
 
 import ca.adamhammer.babelfit.interfaces.Interceptor
 import ca.adamhammer.babelfit.model.PromptContext
+import ca.adamhammer.babelfit.model.PromptPart
 import ca.adamhammer.babelfit.samples.jsoneditor.model.JsonDocument
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray

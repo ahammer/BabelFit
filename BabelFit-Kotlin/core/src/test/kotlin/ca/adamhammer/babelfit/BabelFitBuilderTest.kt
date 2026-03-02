@@ -65,9 +65,9 @@ class BabelFitBuilderTest {
         val mock = MockAdapter.scripted(SimpleResult("ordered"))
         val api = BabelFitBuilder(SimpleTestAPI::class)
             .setAdapterDirect(mock)
-            .addInterceptor { ctx -> ctx.copy(systemInstructions = ctx.systemInstructions + " [A]") }
-            .addInterceptor { ctx -> ctx.copy(systemInstructions = ctx.systemInstructions + " [B]") }
-            .addInterceptor { ctx -> ctx.copy(systemInstructions = ctx.systemInstructions + " [C]") }
+            .addInterceptor { ctx -> ctx.withPart("A", content = " [A]") }
+            .addInterceptor { ctx -> ctx.withPart("B", content = " [B]") }
+            .addInterceptor { ctx -> ctx.withPart("C", content = " [C]") }
             .build().api
 
         api.get().get()

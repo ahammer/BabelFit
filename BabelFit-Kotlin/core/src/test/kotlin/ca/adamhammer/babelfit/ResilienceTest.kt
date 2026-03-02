@@ -132,7 +132,7 @@ class ResilienceTest {
         val api = BabelFitBuilder(SimpleAPI::class)
             .setAdapterDirect(capturingAdapter)
             .addInterceptor { ctx ->
-                ctx.copy(systemInstructions = ctx.systemInstructions + "\n[INJECTED]")
+                ctx.withPart("injected", content = "\n[INJECTED]")
             }
             .build().api
 

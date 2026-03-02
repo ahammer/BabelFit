@@ -2,13 +2,14 @@ package ca.adamhammer.babelfit
 
 import ca.adamhammer.babelfit.interfaces.Interceptor
 import ca.adamhammer.babelfit.model.PromptContext
+import ca.adamhammer.babelfit.model.PromptPart
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 
 class InterceptorTest {
 
     private fun baseContext() = PromptContext(
-        systemInstructions = "You are an AI.",
+        parts = listOf(PromptPart("core", PromptPart.PREAMBLE, "You are an AI.")),
         methodInvocation = """{"method": "test"}""",
         memory = mapOf("key" to "value")
     )
@@ -16,7 +17,7 @@ class InterceptorTest {
     @Test
     fun `single interceptor can modify system instructions`() {
         val interceptor = Interceptor { ctx ->
-            ctx.copy(systemInstructions = ctx.systemInstructions + "\nBe concise.")
+            ctx.withPart("concise", content = "\nBe concise.")
         }
 
         val result = interceptor.intercept(baseContext())
@@ -38,10 +39,10 @@ class InterceptorTest {
     @Test
     fun `interceptors chain in order`() {
         val first = Interceptor { ctx ->
-            ctx.copy(systemInstructions = ctx.systemInstructions + " [FIRST]")
+            ctx.withPart("first", content = " [FIRST]")
         }
         val second = Interceptor { ctx ->
-            ctx.copy(systemInstructions = ctx.systemInstructions + " [SECOND]")
+            ctx.withPart("second", content = " [SECOND]")
         }
 
         var context = baseContext()
@@ -49,7 +50,7 @@ class InterceptorTest {
             context = interceptor.intercept(context)
         }
 
-        assertTrue(context.systemInstructions.endsWith("[FIRST] [SECOND]"))
+        assertTrue(context.systemInstructions.endsWith("[FIRST]\n\n[SECOND]"))
     }
 
     @Test
@@ -69,9 +70,7 @@ class InterceptorTest {
     fun `interceptor can enrich system instructions with world state`() {
         val worldState = """{"hp": 20, "location": "tavern"}"""
         val interceptor = Interceptor { ctx ->
-            ctx.copy(
-                systemInstructions = ctx.systemInstructions + "\n\n# WORLD STATE\n$worldState"
-            )
+            ctx.withPart("world", content = "\n\n# WORLD STATE\n$worldState")
         }
 
         val result = interceptor.intercept(baseContext())

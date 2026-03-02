@@ -21,7 +21,7 @@ class DslAndFallbackTest {
                 retryDelayMs = 10
             }
             interceptor { ctx ->
-                ctx.copy(systemInstructions = ctx.systemInstructions + "\n[DSL-INTERCEPTOR]")
+                ctx.withPart("dsl", content = "\n[DSL-INTERCEPTOR]")
             }
         }
 

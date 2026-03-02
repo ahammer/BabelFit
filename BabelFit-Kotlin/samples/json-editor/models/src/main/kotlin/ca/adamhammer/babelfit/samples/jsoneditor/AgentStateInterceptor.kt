@@ -2,6 +2,7 @@ package ca.adamhammer.babelfit.samples.jsoneditor
 
 import ca.adamhammer.babelfit.interfaces.Interceptor
 import ca.adamhammer.babelfit.model.PromptContext
+import ca.adamhammer.babelfit.model.PromptPart
 
 /**
  * Injects agent workflow context into the system instructions so the LLM
@@ -28,8 +29,10 @@ class AgentStateInterceptor(
             |efficiently. Use tools to read and modify the document as needed.
         """.trimMargin()
 
-        return context.copy(
-            systemInstructions = context.systemInstructions + injection
+        return context.withPart(
+            "workflow",
+            PromptPart.WORKFLOW,
+            injection
         )
     }
 }
