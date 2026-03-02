@@ -60,6 +60,20 @@ class TypedKey<T>(val name: String) {
 }
 
 /**
+ * Estimates the number of tokens in a text string.
+ * Implementations can use vendor-specific tokenizers for accuracy, or the
+ * default heuristic (1 token ≈ 4 characters).
+ */
+fun interface TokenEstimator {
+    fun estimate(text: String): Int
+
+    companion object {
+        /** Default estimator: 1 token per 4 characters. Reasonable for English text. */
+        val DEFAULT = TokenEstimator { text -> (text.length + 3) / 4 }
+    }
+}
+
+/**
  * A named, ordered section of system instructions.
  * Parts are deduplicated by [key] and ordered by [priority] when compiled.
  */
@@ -140,12 +154,50 @@ data class PromptContext(
      * - Join with section separators
      */
     val systemInstructions: String
-        get() = parts
+        get() = compile()
+
+    /**
+     * Compile parts into final system instructions with an optional token budget.
+     *
+     * When [maxTokens] is null, all parts are included (same as [systemInstructions]).
+     * When set, parts are dropped from highest priority number (least important) first
+     * until the compiled text fits within the budget. Parts at [PromptPart.PREAMBLE]
+     * priority (100) are never dropped.
+     *
+     * @param maxTokens maximum token budget, or null for unlimited
+     * @param estimator token estimation strategy (default: 1 token per 4 chars)
+     * @return compiled system instructions string
+     */
+    fun compile(
+        maxTokens: Int? = null,
+        estimator: TokenEstimator = TokenEstimator.DEFAULT
+    ): String {
+        val deduplicated = parts
             .groupBy { it.key }
             .mapValues { (_, dups) -> dups.last() }
             .values
             .sorted()
-            .joinToString("\n\n") { it.content.trim() }
+
+        if (maxTokens == null) {
+            return deduplicated.joinToString("\n\n") { it.content.trim() }
+        }
+
+        // Start with all parts, drop highest-priority-number (least important) first
+        val included = deduplicated.toMutableList()
+        while (included.isNotEmpty()) {
+            val compiled = included.joinToString("\n\n") { it.content.trim() }
+            if (estimator.estimate(compiled) <= maxTokens) {
+                return compiled
+            }
+            // Find the least important part (highest priority number) that isn't PREAMBLE
+            val candidate = included.lastOrNull { it.priority > PromptPart.PREAMBLE }
+                ?: break // only PREAMBLE parts left — keep them all
+            included.remove(candidate)
+        }
+
+        // Over budget but only PREAMBLE parts remain — return what we have
+        return included.joinToString("\n\n") { it.content.trim() }
+    }
 
     /** Read a typed property, returning null if absent or of the wrong type. */
     @Suppress("UNCHECKED_CAST")

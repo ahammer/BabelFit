@@ -38,6 +38,25 @@ class CharacterInterceptor(private val characterProvider: () -> Character) : Int
             val m = (score - 10) / 2
             return if (m >= 0) "+$m" else "$m"
         }
+
+        // Whisper calls only need name, personality, and relationships
+        if (context.methodName == "whisper") {
+            return context.withPart("character-identity", ca.adamhammer.babelfit.model.PromptPart.IDENTITY, """
+                |# YOUR CHARACTER
+                |You ARE ${c.name}, a ${c.race} ${c.characterClass} (Level ${c.level}).
+                |
+                |## Goals
+                |${c.goals.joinToString(" | ").ifBlank { "Survive and support the party." }}
+                |
+                |## Relationships
+                |${c.relationships.entries.joinToString(" | ") { "${it.key}: ${it.value}" }.ifBlank { "No strong stances yet." }}
+                |
+                |## Emotional State
+                |${c.emotionalState}
+            """.trimMargin()
+            )
+        }
+
         return context.withPart("character-identity", ca.adamhammer.babelfit.model.PromptPart.IDENTITY, """
                 |# YOUR CHARACTER
                 |You ARE ${c.name}, a ${c.race} ${c.characterClass} (Level ${c.level}).
@@ -81,11 +100,6 @@ class CharacterInterceptor(private val characterProvider: () -> Character) : Int
                 |
                 |## Class Instincts (${c.characterClass})
                 |- ${classInstincts(c.characterClass)}
-                |
-                |## Step Policy
-                |- Observation has already been performed for this turn.
-                |- You MAY call checkAbilities or whisper ONCE per turn.
-                |- You MUST end your turn with commitAction.
                 |Status: ${c.status}
             """.trimMargin()
         )

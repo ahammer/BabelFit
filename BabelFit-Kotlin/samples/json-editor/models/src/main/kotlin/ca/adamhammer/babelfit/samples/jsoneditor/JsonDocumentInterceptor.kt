@@ -17,8 +17,6 @@ class JsonDocumentInterceptor(
     /** Set before each API call to focus on a subtree instead of the full document. */
     var currentFocusPath: String? = null
 
-    private var staticRulesInjected = false
-
     private val prettyJson = Json { prettyPrint = true }
 
     override fun intercept(context: PromptContext): PromptContext {
@@ -30,15 +28,50 @@ class JsonDocumentInterceptor(
             else -> "Primitive value"
         }
 
-        val parts = mutableListOf<String>()
-
-        var ctx = context
-        if (!staticRulesInjected) {
-            ctx = ctx.withPart("json-editor-rules", ca.adamhammer.babelfit.model.PromptPart.RULES, STATIC_RULES)
-            staticRulesInjected = true
+        // Document context — focused subtree or full document
+        val focusPath = currentFocusPath
+        val docContent = if (!focusPath.isNullOrBlank()) {
+            val subtree = doc.getAtPath(focusPath)
+            if (subtree != null) {
+                val pretty = prettyJson.encodeToString(JsonElement.serializer(), subtree)
+                "**Focus:** `$focusPath`\n```json\n$pretty\n```"
+            } else {
+                val full = truncateDoc(doc.toJsonString())
+                "**Note:** focusPath '$focusPath' not found, showing full document.\n```json\n$full\n```"
+            }
+        } else {
+            val full = truncateDoc(doc.toJsonString())
+            "```json\n$full\n```"
         }
 
-        return ctx.withPart("json-document", ca.adamhammer.babelfit.model.PromptPart.DOCUMENT, parts.joinToString("\n\n"))
+        val documentSection = """
+            |# JSON DOCUMENT CONTEXT
+            |**File:** $filePath
+            |**Structure:** $topLevel
+            |**Nodes:** ${doc.nodeCount()} | **Depth:** ${doc.depth()}
+            |
+            |## Current Document
+            |$docContent
+        """.trimMargin()
+
+        // Warn when a requested source path does not exist in the document
+        val invocation = context.methodInvocation
+        val sourcePathMatch = """"sourcePath"\s*:\s*"([^"]+)"""".toRegex().find(invocation)
+        val warning = if (sourcePathMatch != null) {
+            val sourcePath = sourcePathMatch.groupValues[1]
+            if (doc.getAtPath(sourcePath) == null) {
+                "\n\nNOTE: The requested source path '$sourcePath' does not exist in the current document. " +
+                    "Emit an ASK action to clarify instead of a MOVE."
+            } else {
+                ""
+            }
+        } else {
+            ""
+        }
+
+        return context
+            .withPart("json-editor-rules", PromptPart.RULES, STATIC_RULES)
+            .withPart("json-document", PromptPart.DOCUMENT, documentSection + warning)
     }
 
     private fun truncateDoc(docJson: String): String =

@@ -2,12 +2,59 @@ package ca.adamhammer.babelfit.agents.graph
 
 import ca.adamhammer.babelfit.BabelFitInstance
 import ca.adamhammer.babelfit.agents.AgentDispatcher
-import ca.adamhammer.babelfit.agents.AiArg
 import ca.adamhammer.babelfit.agents.AiDecision
 import ca.adamhammer.babelfit.agents.DecidingAgentAPI
 import ca.adamhammer.babelfit.agents.decide
+import ca.adamhammer.babelfit.interfaces.Interceptor
+import ca.adamhammer.babelfit.model.Message
+import ca.adamhammer.babelfit.model.MessageRole
+import ca.adamhammer.babelfit.model.PromptContext
 import kotlinx.coroutines.runBlocking
 import java.util.logging.Logger
+
+/**
+ * An [Interceptor] that injects accumulated conversation history from a [GraphAgent]'s
+ * previous steps into each subsequent step's [PromptContext].
+ *
+ * Add this interceptor to the [ca.adamhammer.babelfit.BabelFitBuilder] when constructing
+ * the [BabelFitInstance] that will be used with a [GraphAgent]:
+ *
+ * ```kotlin
+ * val historyInterceptor = GraphAgentHistoryInterceptor()
+ * val instance = babelFit<MyAPI> {
+ *     adapter(myAdapter)
+ *     addInterceptor(historyInterceptor)
+ * }
+ * val agent = GraphAgent(instance, decider, graph, historyInterceptor = historyInterceptor)
+ * ```
+ *
+ * @param maxMessages maximum number of history messages to retain (0 = unlimited)
+ */
+class GraphAgentHistoryInterceptor(
+    private val maxMessages: Int = 0
+) : Interceptor {
+    internal val messages = mutableListOf<Message>()
+
+    override fun intercept(context: PromptContext): PromptContext {
+        if (messages.isEmpty()) return context
+        return context.copy(conversationHistory = context.conversationHistory + messages)
+    }
+
+    internal fun addExchange(userPrompt: String, assistantResponse: String) {
+        messages.add(Message(MessageRole.USER, userPrompt))
+        messages.add(Message(MessageRole.ASSISTANT, assistantResponse))
+        if (maxMessages > 0) {
+            while (messages.size > maxMessages * 2) {
+                messages.removeFirst()
+                messages.removeFirst()
+            }
+        }
+    }
+
+    internal fun clear() {
+        messages.clear()
+    }
+}
 
 /**
  * An agent that navigates an [AgentGraph], constraining LLM decisions to only
@@ -32,7 +79,8 @@ class GraphAgent<T : Any>(
     private val apiInstance: BabelFitInstance<T>,
     private val decider: DecidingAgentAPI,
     private val graph: AgentGraph<T>,
-    private val initialArgs: Map<String, String> = emptyMap()
+    private val initialArgs: Map<String, String> = emptyMap(),
+    private val historyInterceptor: GraphAgentHistoryInterceptor? = null
 ) {
     private val logger = Logger.getLogger(GraphAgent::class.java.name)
     private val dispatcher = AgentDispatcher(apiInstance)
@@ -40,12 +88,12 @@ class GraphAgent<T : Any>(
     private var isFirstStep = true
     private var lastStepValue: String? = null
 
-    /** Backward-compatible constructor without initialArgs. */
+    /** Backward-compatible constructor without initialArgs or history. */
     constructor(
         apiInstance: BabelFitInstance<T>,
         decider: DecidingAgentAPI,
         graph: AgentGraph<T>
-    ) : this(apiInstance, decider, graph, emptyMap())
+    ) : this(apiInstance, decider, graph, emptyMap(), null)
 
     /** Returns the current node in the graph. */
     val current: String get() = currentNode
@@ -55,6 +103,7 @@ class GraphAgent<T : Any>(
         currentNode = graph.startNode
         isFirstStep = true
         lastStepValue = null
+        historyInterceptor?.clear()
     }
 
     /** Execute one step: dispatch the current node, then transition. Blocking. */
@@ -65,12 +114,12 @@ class GraphAgent<T : Any>(
         // 1. Dispatch the current node (use initialArgs on the first step, chain results after)
         val args = if (isFirstStep && initialArgs.isNotEmpty()) {
             isFirstStep = false
-            initialArgs.map { (k, v) -> AiArg(k, v) }
+            initialArgs
         } else if (!isFirstStep && lastStepValue != null) {
-            listOf(AiArg("input", lastStepValue!!))
+            mapOf("input" to lastStepValue!!)
         } else {
             isFirstStep = false
-            emptyList()
+            emptyMap()
         }
         val result = dispatcher.dispatchWithMetadata(
             AiDecision(method = currentNode, args = args)
@@ -78,6 +127,12 @@ class GraphAgent<T : Any>(
 
         // Capture result for next step
         lastStepValue = result.value?.toString()
+
+        // Record this step's exchange in conversation history
+        if (historyInterceptor != null && lastStepValue != null) {
+            val userPrompt = "[${currentNode}] ${args.values.joinToString(", ")}"
+            historyInterceptor.addExchange(userPrompt, lastStepValue!!)
+        }
 
         // 2. If terminal, we're done
         if (graph.isTerminal(currentNode)) {

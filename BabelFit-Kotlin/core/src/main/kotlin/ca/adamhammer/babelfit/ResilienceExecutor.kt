@@ -84,20 +84,31 @@ class ResilienceExecutor(
                         "Validation failed: ${e.message}. Please correct your response."
                     )
                 )
-                
-                if (attempt < maxAttempts) {
-                    val delayMs = (resilience.retryDelayMs * resilience.backoffMultiplier.pow(attempt - 1)).toLong()
-                    kotlinx.coroutines.delay(delayMs)
+                retryDelay(attempt, maxAttempts)
+            } catch (e: BabelFitDeserializationException) {
+                notifyAttemptError(currentContext, attempt, e, attemptStartMs)
+                lastException = e
+                logger.warning { "Attempt $attempt/$maxAttempts failed (deserialization): ${e.message}" }
+
+                val correctionParts = buildList {
+                    add("Your response could not be parsed into the expected format.")
+                    e.rawResponse?.let { add("Your raw response was: $it") }
+                    e.expectedType?.let { add("Expected type: $it") }
+                    e.message?.let { add("Error: $it") }
+                    add("Please return ONLY valid JSON matching the expected schema.")
                 }
+                currentContext = currentContext.copy(
+                    conversationHistory = currentContext.conversationHistory + Message(
+                        MessageRole.USER,
+                        correctionParts.joinToString(" ")
+                    )
+                )
+                retryDelay(attempt, maxAttempts)
             } catch (e: Exception) {
                 notifyAttemptError(currentContext, attempt, e, attemptStartMs)
                 lastException = e
                 logger.warning { "Attempt $attempt/$maxAttempts failed: ${e.message}" }
-                
-                if (attempt < maxAttempts) {
-                    val delayMs = (resilience.retryDelayMs * resilience.backoffMultiplier.pow(attempt - 1)).toLong()
-                    kotlinx.coroutines.delay(delayMs)
-                }
+                retryDelay(attempt, maxAttempts)
             }
         }
 
@@ -129,6 +140,13 @@ class ResilienceExecutor(
         val ex = BabelFitException("All $maxAttempts attempt(s) failed", lastException, currentContext)
         notifyError(currentContext, ex, startMs)
         throw ex
+    }
+
+    private suspend fun retryDelay(attempt: Int, maxAttempts: Int) {
+        if (attempt < maxAttempts) {
+            val delayMs = (resilience.retryDelayMs * resilience.backoffMultiplier.pow(attempt - 1)).toLong()
+            delay(delayMs)
+        }
     }
 
     private suspend fun <R : Any> executeWithTimeout(

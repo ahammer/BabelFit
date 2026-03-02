@@ -53,7 +53,7 @@ class AgentDispatcher<T : Any>(
     suspend fun dispatchWithMetadata(decision: AiDecision): DispatchResult {
         val method = resolveMethod(decision.method)
 
-        val args = resolveArguments(method, decision.argsMap())
+        val args = resolveArguments(method, decision.args)
         val result = if (method.isSuspend) {
             method.callSuspendBy(args)
         } else {

@@ -457,7 +457,9 @@ class ClaudeAdapter(
                 "Failed to deserialize response into ${resultClass.simpleName}: ${e.message}" +
                     "\nRaw response: $jsonResponse",
                 e,
-                context
+                context,
+                rawResponse = jsonResponse,
+                expectedType = resultClass.simpleName
             )
         }
     }

@@ -7,50 +7,31 @@ import java.util.concurrent.Future
 
 /**
  * AI interface for an autonomous party member. Each method represents a phase
- * of the AI character's decision-making process. Driven by [AutonomousAgent]
- * with a [DecidingAgentAPI] that picks which phase to run next.
+ * of the AI character's decision-making process. Driven by [GraphAgent]
+ * with deterministic transitions (no routing LLM calls needed).
+ *
+ * Flow: observeSituation → commitAction → (terminal)
  */
 interface PlayerAgentAPI {
 
     @AiOperation(
-        summary = "Observe Situation",
+        summary = "Observe and Plan",
         description = "Observe the current scene and situation from the world state. " +
                 "Consider what is happening, who is present, what dangers or opportunities exist, " +
                 "and how your character would perceive this scene given their backstory and skills. " +
-                "Review the action log to remember what you and others have done recently."
+                "Review the action log to remember what you and others have done recently. " +
+                "Also review your inventory, health, skills, class abilities, and known tactical options " +
+                "to decide what actions are realistically available this turn. " +
+                "Consider party coordination — if you want to send a whisper to a teammate, " +
+                "plan that now and include it in your commitAction."
     )
     @AiResponse(
-        description = "Your character's observations and thoughts about the current situation",
+        description = "Your character's observations, capability assessment, and tactical plan",
         responseClass = String::class
     )
-    @Memorize(label = "Current observations")
+    @Memorize(label = "Current observations and plan")
+    @Transitions("commitAction")
     fun observeSituation(): Future<String>
-
-    @AiOperation(
-        summary = "Check Abilities",
-        description = "Review your current inventory, health, skills, class abilities, and known tactical options. " +
-            "Decide what actions are realistically available this turn. Call this at most ONCE per turn."
-    )
-    @AiResponse(
-        description = "A concise capability assessment for this turn",
-        responseClass = String::class
-    )
-    @Memorize(label = "Capability assessment")
-    fun checkAbilities(): Future<String>
-
-    @AiOperation(
-        summary = "Whisper Planning",
-        description = "Think about party coordination and decide whether " +
-            "to send a short whisper this turn. " +
-            "This step should only plan coordination; the actual whisper is sent " +
-            "via commitAction whisperTarget/whisperMessage. Call this at most ONCE per turn."
-    )
-    @AiResponse(
-        description = "A short tactical-social reflection for this turn",
-        responseClass = String::class
-    )
-    @Memorize(label = "Whisper planning")
-    fun whisper(): Future<String>
 
     @AiOperation(
         summary = "Commit Action",

@@ -11,7 +11,7 @@ class DecidingAgentTest {
 
     @Test
     fun `decide returns AiDecision from scripted adapter`() {
-        val expectedDecision = AiDecision(method = "analyze", args = emptyList())
+        val expectedDecision = AiDecision(method = "analyze")
         val mock = MockAdapter.scripted(expectedDecision)
 
         val decider = BabelFitBuilder(DecidingAgentAPI::class)
@@ -26,7 +26,7 @@ class DecidingAgentTest {
 
     @Test
     fun `decide captures schema in method invocation context`() {
-        val decision = AiDecision(method = "test", args = listOf(AiArg("key", "val")))
+        val decision = AiDecision(method = "test", args = mapOf("key" to "val"))
         val mock = MockAdapter.scripted(decision)
 
         val decider = BabelFitBuilder(DecidingAgentAPI::class)
@@ -40,7 +40,7 @@ class DecidingAgentTest {
 
     @Test
     fun `decide extension function creates proper schema from BabelFitInstance`() {
-        val decision = AiDecision(method = "get", args = emptyList())
+        val decision = AiDecision(method = "get")
         val mock = MockAdapter.scripted(decision)
 
         val decider = BabelFitBuilder(DecidingAgentAPI::class)

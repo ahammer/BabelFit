@@ -44,7 +44,7 @@ class SequentialRunner<T : Any>(
 
         for (methodName in methodNames) {
             val result = dispatcher.dispatchWithMetadata(
-                AiDecision(method = methodName, args = emptyList())
+                AiDecision(method = methodName)
             )
             lastResult = result
             if (result.isTerminal) break

@@ -144,7 +144,7 @@ class AgentGraphTest {
             .build()
 
         // Decider should NOT be called since all edges are deterministic
-        val deciderMock = MockAdapter.scripted(AiDecision("unused", emptyList()))
+        val deciderMock = MockAdapter.scripted(AiDecision("unused"))
         val decider = BabelFitBuilder(DecidingAgentAPI::class)
             .setAdapterDirect(deciderMock)
             .build().api
@@ -175,7 +175,7 @@ class AgentGraphTest {
 
         // LLM chooses "plan" at the branching point
         val deciderMock = MockAdapter.scripted(
-            AiDecision("plan", emptyList())
+            AiDecision("plan")
         )
         val decider = BabelFitBuilder(DecidingAgentAPI::class)
             .setAdapterDirect(deciderMock)
@@ -204,7 +204,7 @@ class AgentGraphTest {
             .setAdapterDirect(apiMock)
             .build()
 
-        val deciderMock = MockAdapter.scripted(AiDecision("unused", emptyList()))
+        val deciderMock = MockAdapter.scripted(AiDecision("unused"))
         val decider = BabelFitBuilder(DecidingAgentAPI::class)
             .setAdapterDirect(deciderMock)
             .build().api
@@ -230,7 +230,7 @@ class AgentGraphTest {
             .setAdapterDirect(apiMock)
             .build()
 
-        val deciderMock = MockAdapter.scripted(AiDecision("unused", emptyList()))
+        val deciderMock = MockAdapter.scripted(AiDecision("unused"))
         val decider = BabelFitBuilder(DecidingAgentAPI::class)
             .setAdapterDirect(deciderMock)
             .build().api

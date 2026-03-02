@@ -5,6 +5,7 @@ import ca.adamhammer.babelfit.utils.toJsonClassMetadataString
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Future
 
 import ca.adamhammer.babelfit.annotations.AiSchema
@@ -19,6 +20,7 @@ import ca.adamhammer.babelfit.annotations.Terminal
  * @param name the parameter name (must match the target method's parameter name)
  * @param value the parameter value as a string
  */
+@Deprecated("Use Map<String, String> in AiDecision.args instead", level = DeprecationLevel.WARNING)
 @Serializable
 @AiSchema(title = "AI Argument", description = "A single named argument")
 data class AiArg(
@@ -32,23 +34,16 @@ data class AiArg(
  * Represents the AI's choice of which method to call next, along with its arguments.
  *
  * @param method the name of the method to invoke on the target API
- * @param args the named arguments to pass to the method
+ * @param args the named arguments to pass to the method as key-value pairs
  */
 @Serializable
 @AiSchema(title = "AI Decision", description = "Look at the current state and options and decide what to do next")
 data class AiDecision(
     @field:AiSchema(description = "The method to call with the arguments")
     val method: String,
-    @field:AiSchema(description = "The arguments to pass to this call.")
-    val args: List<AiArg>
-) {
-    constructor(method: String, argsMap: Map<String, String>) : this(
-        method,
-        argsMap.map { (k, v) -> AiArg(k, v) }
-    )
-
-    fun argsMap(): Map<String, String> = args.associate { it.name to it.value }
-}
+    @field:AiSchema(description = "The arguments to pass to this call as key-value pairs.")
+    val args: Map<String, String> = emptyMap()
+)
 
 /**
  * Extension that asks the [DecidingAgentAPI] to choose the next action for a given [BabelFitInstance].
@@ -56,11 +51,16 @@ data class AiDecision(
  * @param babelfitInstance the target API instance whose methods are available for selection
  * @param excludedMethods method names to exclude from the decision (e.g., already-called methods)
  */
+private val schemaCache = ConcurrentHashMap<Pair<String, Set<String>>, String>()
+
 fun <T : Any> DecidingAgentAPI.decide(
     babelfitInstance: BabelFitInstance<T>,
     excludedMethods: Set<String> = emptySet()
 ): Future<AiDecision> {
-    val schema = babelfitInstance.klass.toJsonClassMetadataString(excludedMethods)
+    val cacheKey = babelfitInstance.klass.qualifiedName.orEmpty() to excludedMethods
+    val schema = schemaCache.getOrPut(cacheKey) {
+        babelfitInstance.klass.toJsonClassMetadataString(excludedMethods)
+    }
     return decideNextAction(schema)
 }
 

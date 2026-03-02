@@ -30,7 +30,11 @@ class BabelFitConfigurationException(
 class BabelFitDeserializationException(
     message: String,
     cause: Throwable? = null,
-    context: PromptContext? = null
+    context: PromptContext? = null,
+    /** The raw text response from the AI that failed to parse. */
+    val rawResponse: String? = null,
+    /** The expected type/schema that the response should have matched. */
+    val expectedType: String? = null
 ) : BabelFitException(message, cause, context)
 
 /** Thrown when a tool invocation fails. */

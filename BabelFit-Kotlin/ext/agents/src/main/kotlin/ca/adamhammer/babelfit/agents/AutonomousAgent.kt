@@ -103,7 +103,7 @@ class AutonomousAgent<T : Any>(
 
         val fallbackTerminal = dispatcher.firstParameterlessTerminalMethodName()
         if (fallbackTerminal != null) {
-            return dispatcher.dispatchWithMetadata(AiDecision(fallbackTerminal, emptyList()))
+            return dispatcher.dispatchWithMetadata(AiDecision(fallbackTerminal, emptyMap()))
         }
 
         return lastResult
@@ -120,6 +120,6 @@ class AutonomousAgent<T : Any>(
         methodName: String,
         args: Map<String, String> = emptyMap()
     ): AgentDispatcher.DispatchResult = dispatcher.dispatchWithMetadata(
-        AiDecision(method = methodName, argsMap = args)
+        AiDecision(method = methodName, args = args)
     )
 }

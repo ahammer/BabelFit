@@ -37,7 +37,6 @@ class DefaultContextBuilder : ContextBuilder {
             |3. If memory is provided, use it to inform your answer.
             |4. Do not include apology statements, disclaimers, or meta-commentary.
             |5. Return only the specified structure or text, without superfluous information.
-            |6. When a Memorize key is present, the result will be stored for later — minimize tokens, maximize content.
         """.trimMargin()
     }
 }

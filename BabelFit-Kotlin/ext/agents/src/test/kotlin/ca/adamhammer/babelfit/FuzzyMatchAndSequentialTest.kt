@@ -17,7 +17,7 @@ class FuzzyMatchAndSequentialTest {
             .build()
         val dispatcher = AgentDispatcher(instance)
 
-        val result = dispatcher.dispatch(AiDecision("analyze", emptyList()))
+        val result = dispatcher.dispatch(AiDecision("analyze", emptyMap()))
         assertEquals("result", result)
     }
 
@@ -29,7 +29,7 @@ class FuzzyMatchAndSequentialTest {
             .build()
         val dispatcher = AgentDispatcher(instance)
 
-        val result = dispatcher.dispatch(AiDecision("Analyze", emptyList()))
+        val result = dispatcher.dispatch(AiDecision("Analyze", emptyMap()))
         assertEquals("result", result)
     }
 
@@ -42,7 +42,7 @@ class FuzzyMatchAndSequentialTest {
         val dispatcher = AgentDispatcher(instance)
 
         // "analize" is edit distance 1 from "analyze"
-        val result = dispatcher.dispatch(AiDecision("analize", emptyList()))
+        val result = dispatcher.dispatch(AiDecision("analize", emptyMap()))
         assertEquals("result", result)
     }
 
@@ -55,7 +55,7 @@ class FuzzyMatchAndSequentialTest {
         val dispatcher = AgentDispatcher(instance)
 
         assertThrows(IllegalArgumentException::class.java) {
-            dispatcher.dispatch(AiDecision("completelyWrong", emptyList()))
+            dispatcher.dispatch(AiDecision("completelyWrong", emptyMap()))
         }
     }
 

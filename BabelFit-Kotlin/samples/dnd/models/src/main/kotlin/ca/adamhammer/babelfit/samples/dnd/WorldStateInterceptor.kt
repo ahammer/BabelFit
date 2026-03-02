@@ -16,6 +16,10 @@ class WorldStateInterceptor(private val isDm: Boolean = true, private val worldP
 
     private val json = Json { prettyPrint = false }
 
+    // Stagnation analysis cache
+    private var cachedActionLogSize = -1
+    private var cachedStagnationResult: Pair<String, String> = "" to "- No patterns yet."
+
     private fun escalationGuidance(round: Int, maxRounds: Int): String {
         val progress = if (maxRounds > 0) round.toFloat() / maxRounds else 1f
         val pct = (progress * 100).toInt()
@@ -139,13 +143,49 @@ class WorldStateInterceptor(private val isDm: Boolean = true, private val worldP
         return intersection.size.toFloat() / smaller >= 0.5f
     }
 
+    /**
+     * Cached version of stagnation analysis — only recomputes when the action log grows.
+     */
+    private fun cachedAnalyzeActionPatterns(world: World): Pair<String, String> {
+        if (world.actionLog.size != cachedActionLogSize) {
+            cachedActionLogSize = world.actionLog.size
+            cachedStagnationResult = analyzeActionPatterns(world)
+        }
+        return cachedStagnationResult
+    }
+
+    /**
+     * Summarize the action log for prompt display: keep last 15 entries verbatim,
+     * summarize older entries to a single line each (just round + character + action type).
+     */
+    private fun summarizeActionLog(actionLog: List<String>): List<String> {
+        if (actionLog.size <= 15) return actionLog
+        val recentCount = 15
+        val old = actionLog.dropLast(recentCount)
+        val recent = actionLog.takeLast(recentCount)
+        val summaryPattern = Regex("""Round (\d+): (.+?) — (.+?) →.*""")
+        val summarized = old.map { entry ->
+            val match = summaryPattern.find(entry)
+            if (match != null) {
+                val (round, name, action) = match.destructured
+                "R$round: $name — $action"
+            } else {
+                entry.take(80)
+            }
+        }
+        return summarized + recent
+    }
+
     override fun intercept(context: PromptContext): PromptContext {
         val world = worldProvider()
-        val worldJson = json.encodeToString(world)
         val lore = world.lore
-        
+
+        // Lightweight calls: skip full world JSON to save tokens
+        val lightweightMethods = setOf("generateSceneImagePrompt", "generateImage")
+        val isLightweight = context.methodName in lightweightMethods
+
         val dmInstructions = if (isDm) {
-            val (stagnationWarning, actionPatterns) = analyzeActionPatterns(world)
+            val (stagnationWarning, actionPatterns) = cachedAnalyzeActionPatterns(world)
             """
             |You are the Dungeon Master for a multi-player text-based D&D adventure.
             |Stay in character. Be creative, dramatic, and fair.
@@ -200,6 +240,30 @@ class WorldStateInterceptor(private val isDm: Boolean = true, private val worldP
             """.trimMargin()
         }
 
+        if (isLightweight) {
+            return context.withPart("world-state", ca.adamhammer.babelfit.model.PromptPart.KNOWLEDGE, """
+                |# CURRENT WORLD STATE
+                |$dmInstructions
+                |## Campaign Lore Summary
+                |- Premise: ${lore.campaignPremise.ifBlank { "Not established yet." }}
+                |- Key NPCs: ${lore.npcs.take(5).joinToString(" | ") { "${it.name} (${it.role})" }.ifBlank { "None yet" }}
+                |
+                |## Current Location: ${world.location.name}
+                |${world.location.description}
+                |
+                |## Whisper Log (Recent)
+                |${world.whisperLog.takeLast(8).joinToString("\n") { "- R${it.round} ${it.from} -> ${it.to}: ${it.message}" }.ifBlank { "- None yet" }}
+            """.trimMargin()
+            )
+        }
+
+        // Serialize a summarized world: truncate action log for prompt display
+        val summarizedWorld = world.copy(
+            actionLog = summarizeActionLog(world.actionLog),
+            whisperLog = world.whisperLog.takeLast(5)
+        )
+        val worldJson = json.encodeToString(summarizedWorld)
+
         return context.withPart("world-state", ca.adamhammer.babelfit.model.PromptPart.KNOWLEDGE, """
                 |${GameRules.SHARED_RULEBOOK}
                 |
@@ -212,7 +276,7 @@ class WorldStateInterceptor(private val isDm: Boolean = true, private val worldP
                 |- Key NPCs: ${lore.npcs.take(5).joinToString(" | ") { "${it.name} (${it.role})" }.ifBlank { "None yet" }}
                 |
                 |## Whisper Log (Recent)
-                |${world.whisperLog.takeLast(8).joinToString("\n") { "- R${it.round} ${it.from} -> ${it.to}: ${it.message}" }.ifBlank { "- None yet" }}
+                |${world.whisperLog.takeLast(5).joinToString("\n") { "- R${it.round} ${it.from} -> ${it.to}: ${it.message}" }.ifBlank { "- None yet" }}
                 |
                 |```json
                 |$worldJson
