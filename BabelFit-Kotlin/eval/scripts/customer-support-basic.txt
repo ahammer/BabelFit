@@ -1,0 +1,8 @@
+# Customer Support eval script — simulates a customer interaction
+# Each line is a message from the customer
+
+Hi, I purchased a Widget Pro Medium about 6 months ago and it's been making a strange buzzing noise.
+The buzzing happens whenever I turn it on. I've tried restarting it but the problem persists.
+Is this covered under warranty? I still have my receipt.
+I'd like to get it replaced if possible. What are my options?
+Thank you for your help. I'd like to proceed with the replacement.

@@ -3,6 +3,9 @@ package ca.adamhammer.babelfit.samples.traceviewer.api
 import ca.adamhammer.babelfit.debug.trace.SpanType
 import ca.adamhammer.babelfit.debug.trace.TraceExport
 import ca.adamhammer.babelfit.debug.trace.TraceSpan
+import ca.adamhammer.babelfit.samples.traceviewer.models.MetricDelta
+import ca.adamhammer.babelfit.samples.traceviewer.models.TraceComparison
+import ca.adamhammer.babelfit.samples.traceviewer.models.TraceComparisonStats
 
 data class TraceStatistics(
     val totalSpans: Int,
@@ -97,5 +100,84 @@ object TraceStats {
         count >= 1_000_000 -> "%.1fM".format(count / 1_000_000.0)
         count >= 1_000 -> "%.1fK".format(count / 1_000.0)
         else -> count.toString()
+    }
+
+    fun compareTraces(current: TraceExport, previous: TraceExport): TraceComparison {
+        val curStats = computeStats(current)
+        val prevStats = computeStats(previous)
+
+        val curComp = curStats.toComparisonStats()
+        val prevComp = prevStats.toComparisonStats()
+
+        val deltas = buildList {
+            add(longDelta(
+                "Duration", prevStats.totalDurationMs,
+                curStats.totalDurationMs, "ms", lowerIsBetter = true
+            ))
+            add(longDelta(
+                "Input Tokens", prevStats.totalInputTokens,
+                curStats.totalInputTokens, "", lowerIsBetter = true
+            ))
+            add(longDelta(
+                "Output Tokens", prevStats.totalOutputTokens,
+                curStats.totalOutputTokens, "", lowerIsBetter = true
+            ))
+            add(intDelta(
+                "Errors", prevStats.errorCount,
+                curStats.errorCount, lowerIsBetter = true
+            ))
+            add(intDelta(
+                "Retries", prevStats.retriedRequestCount,
+                curStats.retriedRequestCount, lowerIsBetter = true
+            ))
+            add(intDelta(
+                "Successes", prevStats.successCount,
+                curStats.successCount, lowerIsBetter = false
+            ))
+            add(longDelta(
+                "Avg Call Duration", prevStats.avgCallDurationMs,
+                curStats.avgCallDurationMs, "ms", lowerIsBetter = true
+            ))
+            add(intDelta(
+                "Duplicate Prompts", prevStats.duplicatePromptCount,
+                curStats.duplicatePromptCount, lowerIsBetter = true
+            ))
+            add(intDelta(
+                "Total Spans", prevStats.totalSpans,
+                curStats.totalSpans, lowerIsBetter = true
+            ))
+        }
+
+        return TraceComparison(current = curComp, previous = prevComp, deltas = deltas)
+    }
+
+    private fun TraceStatistics.toComparisonStats() = TraceComparisonStats(
+        totalSpans = totalSpans,
+        totalDurationMs = totalDurationMs,
+        totalInputTokens = totalInputTokens,
+        totalOutputTokens = totalOutputTokens,
+        errorCount = errorCount,
+        retriedRequestCount = retriedRequestCount,
+        successCount = successCount,
+        avgCallDurationMs = avgCallDurationMs,
+        duplicatePromptCount = duplicatePromptCount
+    )
+
+    private fun longDelta(metric: String, prev: Long, cur: Long, suffix: String, lowerIsBetter: Boolean): MetricDelta {
+        val diff = cur - prev
+        val pct = if (prev > 0) "%.1f%%".format((diff.toDouble() / prev) * 100) else "N/A"
+        val sign = if (diff > 0) "+" else ""
+        val improved = if (lowerIsBetter) diff < 0 else diff > 0
+        return MetricDelta(
+            metric = metric,
+            previous = "$prev$suffix",
+            current = "$cur$suffix",
+            delta = "$sign$diff$suffix ($pct)",
+            improved = improved
+        )
+    }
+
+    private fun intDelta(metric: String, prev: Int, cur: Int, lowerIsBetter: Boolean): MetricDelta {
+        return longDelta(metric, prev.toLong(), cur.toLong(), "", lowerIsBetter)
     }
 }

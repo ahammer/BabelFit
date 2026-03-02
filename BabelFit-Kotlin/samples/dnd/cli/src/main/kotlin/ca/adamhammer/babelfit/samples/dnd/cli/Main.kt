@@ -10,8 +10,11 @@ import ca.adamhammer.babelfit.samples.dnd.api.*
 import ca.adamhammer.babelfit.samples.dnd.model.*
 import ca.adamhammer.babelfit.babelFit
 import kotlinx.coroutines.runBlocking
+import java.io.File
 
-fun main() = runBlocking {
+fun main(args: Array<String>) = runBlocking {
+    val tracePath = argValue(args, "--trace")
+
     val openAiAdapter = OpenAiAdapter()
     val traceSession = TraceSession()
     val adapter = TracingAdapter(openAiAdapter, traceSession)
@@ -30,8 +33,17 @@ fun main() = runBlocking {
     try {
         session.startGame(world)
     } finally {
-        traceSession.save()
+        if (tracePath != null) {
+            traceSession.save(File(tracePath).also { it.parentFile?.mkdirs() })
+        } else {
+            traceSession.save()
+        }
     }
+}
+
+private fun argValue(args: Array<String>, flag: String): String? {
+    val idx = args.indexOf(flag)
+    return if (idx >= 0 && idx + 1 < args.size) args[idx + 1] else null
 }
 
 class CliGameListener : GameEventListener {

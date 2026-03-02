@@ -1,0 +1,290 @@
+{
+    "spans": [
+        {
+            "id": "8900d575-f654-4c3f-aeea-fd7169db989e",
+            "type": "SESSION",
+            "startTimeMs": 1772410863538,
+            "endTimeMs": 1772410874909,
+            "name": "Session: 2026-03-01_16-21-03",
+            "metadata": {
+                "wallTimeMs": "11371",
+                "activeLlmTimeMs": "11051",
+                "totalRequests": "6",
+                "totalAttempts": "6",
+                "retryCount": "0",
+                "errorCount": "0",
+                "toolCallCount": "0"
+            }
+        },
+        {
+            "id": "94f4540b-faa1-4d8a-933b-c36c3aab9d17",
+            "type": "REQUEST",
+            "parentId": "8900d575-f654-4c3f-aeea-fd7169db989e",
+            "startTimeMs": 1772410863841,
+            "endTimeMs": 1772410866298,
+            "name": "Request: respond"
+        },
+        {
+            "id": "94f4540b-faa1-4d8a-933b-c36c3aab9d17-attempt-1",
+            "type": "ATTEMPT",
+            "parentId": "94f4540b-faa1-4d8a-933b-c36c3aab9d17",
+            "startTimeMs": 1772410863843,
+            "endTimeMs": 1772410866298,
+            "name": "Attempt 1",
+            "messages": [
+                {
+                    "role": "USER",
+                    "content": "Create a JSON document representing a person with name \"Alice\", age 30, and email \"alice@example.com\""
+                }
+            ],
+            "schema": "{\"method\":\"respond: Respond to user with structured actions\",\"parameters\":[{\"description\":\"The user's message describing what they want to do with the JSON document\",\"value\":\"Create a JSON document representing a person with name \\\"Alice\\\", age 30, and email \\\"alice@example.com\\\"\"}],\"resultSchema\":{\"actions\":[\"actions\"]}}",
+            "requestInput": "System: You are a specialized AI Assistant that handles request/response method calls and returns results in JSON or plain text.\n\nRules:\n1. A JSON block describes the method, its parameters, and any stored memory.\n2. The 'resultSchema' field indicates the JSON format you must return.\n   - Do NOT add any fields not mentioned in the schema.\n   - If the schema is \"Text\", return plain text without JSON wrapping.\n3. If memory is provided, use it to inform your answer.\n4. Do not include apology statements, disclaimers, or meta-commentary.\n5. Return only the specified structure or text, without superfluous information.\n6. When a Memorize key is present, the result will be stored for later — minimize tokens, maximize content.\n# JSON DOCUMENT CONTEXT\n**File:** C:\\Users\\Adam\\git\\BabelFit\\BabelFit-Kotlin\\samples\\json-editor\\cli\\test.json\n**Structure:** Object with keys: colors\n**Nodes:** 27 | **Depth:** 4\n\n## Current Document\n```json\n{\n    \"colors\": [\n        {\n            \"color\": \"red\",\n            \"items\": [\n                \"apple\",\n                \"strawberry\"\n            ]\n        },\n        {\n            \"color\": \"green\",\n            \"items\": [\n                \"grass\",\n                \"leaf\"\n            ]\n        },\n        {\n            \"color\": \"blue\",\n            \"items\": [\n                \"sky\",\n                \"ocean\"\n            ]\n        },\n        {\n            \"color\": \"yellow\",\n            \"items\": [\n                \"banana\",\n                \"sun\"\n            ]\n        },\n        {\n            \"color\": \"purple\",\n            \"items\": [\n                \"grape\",\n                \"violet\"\n            ]\n        }\n    ]\n}\n```\n\n## Path Format\nUse JSON Pointer paths with '/' separators. Examples:\n- Root: \"\" or \"/\"\n- Object key: \"/users\"\n- Nested: \"/users/0/name\"\n- Array index: \"/items/2\"\nMemory:\n{}",
+            "responseOutput": "JsonEditorResponse(actions=[EditorAction(type=SET, path=/person, value={\"name\":\"Alice\",\"age\":30,\"email\":\"alice@example.com\"}, from=, to=, message=Creating a JSON document for a person.)])"
+        },
+        {
+            "id": "dfbc9484-06e2-486e-8105-99ec5db17856-attempt-1",
+            "type": "ATTEMPT",
+            "parentId": "dfbc9484-06e2-486e-8105-99ec5db17856",
+            "startTimeMs": 1772410866302,
+            "endTimeMs": 1772410868424,
+            "name": "Attempt 1",
+            "messages": [
+                {
+                    "role": "USER",
+                    "content": "Create a JSON document representing a person with name \"Alice\", age 30, and email \"alice@example.com\""
+                },
+                {
+                    "role": "ASSISTANT",
+                    "content": "{\"actions\":[{\"type\":\"SET\",\"path\":\"/person\",\"value\":\"{\\\"name\\\":\\\"Alice\\\",\\\"age\\\":30,\\\"email\\\":\\\"alice@example.com\\\"}\",\"message\":\"Creating a JSON document for a person.\"}]}"
+                },
+                {
+                    "role": "USER",
+                    "content": "Add a nested \"address\" object with street \"123 Main St\", city \"Springfield\", and state \"IL\""
+                }
+            ],
+            "schema": "{\"method\":\"respond: Respond to user with structured actions\",\"parameters\":[{\"description\":\"The user's message describing what they want to do with the JSON document\",\"value\":\"Add a nested \\\"address\\\" object with street \\\"123 Main St\\\", city \\\"Springfield\\\", and state \\\"IL\\\"\"}],\"resultSchema\":{\"actions\":[\"actions\"]}}",
+            "requestInput": "System: You are a specialized AI Assistant that handles request/response method calls and returns results in JSON or plain text.\n\nRules:\n1. A JSON block describes the method, its parameters, and any stored memory.\n2. The 'resultSchema' field indicates the JSON format you must return.\n   - Do NOT add any fields not mentioned in the schema.\n   - If the schema is \"Text\", return plain text without JSON wrapping.\n3. If memory is provided, use it to inform your answer.\n4. Do not include apology statements, disclaimers, or meta-commentary.\n5. Return only the specified structure or text, without superfluous information.\n6. When a Memorize key is present, the result will be stored for later — minimize tokens, maximize content.\n# JSON DOCUMENT CONTEXT\n**File:** C:\\Users\\Adam\\git\\BabelFit\\BabelFit-Kotlin\\samples\\json-editor\\cli\\test.json\n**Structure:** Object with keys: colors, person\n**Nodes:** 31 | **Depth:** 4\n\n## Current Document\n```json\n{\n    \"colors\": [\n        {\n            \"color\": \"red\",\n            \"items\": [\n                \"apple\",\n                \"strawberry\"\n            ]\n        },\n        {\n            \"color\": \"green\",\n            \"items\": [\n                \"grass\",\n                \"leaf\"\n            ]\n        },\n        {\n            \"color\": \"blue\",\n            \"items\": [\n                \"sky\",\n                \"ocean\"\n            ]\n        },\n        {\n            \"color\": \"yellow\",\n            \"items\": [\n                \"banana\",\n                \"sun\"\n            ]\n        },\n        {\n            \"color\": \"purple\",\n            \"items\": [\n                \"grape\",\n                \"violet\"\n            ]\n        }\n    ],\n    \"person\": {\n        \"name\": \"Alice\",\n        \"age\": 30,\n        \"email\": \"alice@example.com\"\n    }\n}\n```\n\n## Path Format\nUse JSON Pointer paths with '/' separators. Examples:\n- Root: \"\" or \"/\"\n- Object key: \"/users\"\n- Nested: \"/users/0/name\"\n- Array index: \"/items/2\"\nMemory:\n{}",
+            "responseOutput": "JsonEditorResponse(actions=[EditorAction(type=SET, path=/person/address, value={\"street\":\"123 Main St\",\"city\":\"Springfield\",\"state\":\"IL\"}, from=/person, to=/person/address, message=Adding address)])"
+        },
+        {
+            "id": "dfbc9484-06e2-486e-8105-99ec5db17856",
+            "type": "REQUEST",
+            "parentId": "8900d575-f654-4c3f-aeea-fd7169db989e",
+            "startTimeMs": 1772410866302,
+            "endTimeMs": 1772410868424,
+            "name": "Request: respond"
+        },
+        {
+            "id": "7c1b7573-7ce7-48f8-a37b-4057be92dd03-attempt-1",
+            "type": "ATTEMPT",
+            "parentId": "7c1b7573-7ce7-48f8-a37b-4057be92dd03",
+            "startTimeMs": 1772410868427,
+            "endTimeMs": 1772410869573,
+            "name": "Attempt 1",
+            "messages": [
+                {
+                    "role": "USER",
+                    "content": "Create a JSON document representing a person with name \"Alice\", age 30, and email \"alice@example.com\""
+                },
+                {
+                    "role": "ASSISTANT",
+                    "content": "{\"actions\":[{\"type\":\"SET\",\"path\":\"/person\",\"value\":\"{\\\"name\\\":\\\"Alice\\\",\\\"age\\\":30,\\\"email\\\":\\\"alice@example.com\\\"}\",\"message\":\"Creating a JSON document for a person.\"}]}"
+                },
+                {
+                    "role": "USER",
+                    "content": "Add a nested \"address\" object with street \"123 Main St\", city \"Springfield\", and state \"IL\""
+                },
+                {
+                    "role": "ASSISTANT",
+                    "content": "{\"actions\":[{\"type\":\"SET\",\"path\":\"/person/address\",\"value\":\"{\\\"street\\\":\\\"123 Main St\\\",\\\"city\\\":\\\"Springfield\\\",\\\"state\\\":\\\"IL\\\"}\",\"from\":\"/person\",\"to\":\"/person/address\",\"message\":\"Adding address\"}]}"
+                },
+                {
+                    "role": "USER",
+                    "content": "Add an array called \"hobbies\" with three items: \"reading\", \"hiking\", \"cooking\""
+                }
+            ],
+            "schema": "{\"method\":\"respond: Respond to user with structured actions\",\"parameters\":[{\"description\":\"The user's message describing what they want to do with the JSON document\",\"value\":\"Add an array called \\\"hobbies\\\" with three items: \\\"reading\\\", \\\"hiking\\\", \\\"cooking\\\"\"}],\"resultSchema\":{\"actions\":[\"actions\"]}}",
+            "requestInput": "System: You are a specialized AI Assistant that handles request/response method calls and returns results in JSON or plain text.\n\nRules:\n1. A JSON block describes the method, its parameters, and any stored memory.\n2. The 'resultSchema' field indicates the JSON format you must return.\n   - Do NOT add any fields not mentioned in the schema.\n   - If the schema is \"Text\", return plain text without JSON wrapping.\n3. If memory is provided, use it to inform your answer.\n4. Do not include apology statements, disclaimers, or meta-commentary.\n5. Return only the specified structure or text, without superfluous information.\n6. When a Memorize key is present, the result will be stored for later — minimize tokens, maximize content.\n# JSON DOCUMENT CONTEXT\n**File:** C:\\Users\\Adam\\git\\BabelFit\\BabelFit-Kotlin\\samples\\json-editor\\cli\\test.json\n**Structure:** Object with keys: colors, person\n**Nodes:** 35 | **Depth:** 4\n\n## Current Document\n```json\n{\n    \"colors\": [\n        {\n            \"color\": \"red\",\n            \"items\": [\n                \"apple\",\n                \"strawberry\"\n            ]\n        },\n        {\n            \"color\": \"green\",\n            \"items\": [\n                \"grass\",\n                \"leaf\"\n            ]\n        },\n        {\n            \"color\": \"blue\",\n            \"items\": [\n                \"sky\",\n                \"ocean\"\n            ]\n        },\n        {\n            \"color\": \"yellow\",\n            \"items\": [\n                \"banana\",\n                \"sun\"\n            ]\n        },\n        {\n            \"color\": \"purple\",\n            \"items\": [\n                \"grape\",\n                \"violet\"\n            ]\n        }\n    ],\n    \"person\": {\n        \"name\": \"Alice\",\n        \"age\": 30,\n        \"email\": \"alice@example.com\",\n        \"address\": {\n            \"street\": \"123 Main St\",\n            \"city\": \"Springfield\",\n            \"state\": \"IL\"\n        }\n    }\n}\n```\n\n## Path Format\nUse JSON Pointer paths with '/' separators. Examples:\n- Root: \"\" or \"/\"\n- Object key: \"/users\"\n- Nested: \"/users/0/name\"\n- Array index: \"/items/2\"\nMemory:\n{}",
+            "responseOutput": "JsonEditorResponse(actions=[EditorAction(type=SET, path=/person/hobbies, value=[\"reading\",\"hiking\",\"cooking\"], from=/person, to=/person/hobbies, message=Adding hobbies array)])"
+        },
+        {
+            "id": "7c1b7573-7ce7-48f8-a37b-4057be92dd03",
+            "type": "REQUEST",
+            "parentId": "8900d575-f654-4c3f-aeea-fd7169db989e",
+            "startTimeMs": 1772410868427,
+            "endTimeMs": 1772410869573,
+            "name": "Request: respond"
+        },
+        {
+            "id": "5fc5cc94-f9f2-4131-8a2d-e90b24eb5894",
+            "type": "REQUEST",
+            "parentId": "8900d575-f654-4c3f-aeea-fd7169db989e",
+            "startTimeMs": 1772410869575,
+            "endTimeMs": 1772410870716,
+            "name": "Request: respond"
+        },
+        {
+            "id": "5fc5cc94-f9f2-4131-8a2d-e90b24eb5894-attempt-1",
+            "type": "ATTEMPT",
+            "parentId": "5fc5cc94-f9f2-4131-8a2d-e90b24eb5894",
+            "startTimeMs": 1772410869575,
+            "endTimeMs": 1772410870716,
+            "name": "Attempt 1",
+            "messages": [
+                {
+                    "role": "USER",
+                    "content": "Create a JSON document representing a person with name \"Alice\", age 30, and email \"alice@example.com\""
+                },
+                {
+                    "role": "ASSISTANT",
+                    "content": "{\"actions\":[{\"type\":\"SET\",\"path\":\"/person\",\"value\":\"{\\\"name\\\":\\\"Alice\\\",\\\"age\\\":30,\\\"email\\\":\\\"alice@example.com\\\"}\",\"message\":\"Creating a JSON document for a person.\"}]}"
+                },
+                {
+                    "role": "USER",
+                    "content": "Add a nested \"address\" object with street \"123 Main St\", city \"Springfield\", and state \"IL\""
+                },
+                {
+                    "role": "ASSISTANT",
+                    "content": "{\"actions\":[{\"type\":\"SET\",\"path\":\"/person/address\",\"value\":\"{\\\"street\\\":\\\"123 Main St\\\",\\\"city\\\":\\\"Springfield\\\",\\\"state\\\":\\\"IL\\\"}\",\"from\":\"/person\",\"to\":\"/person/address\",\"message\":\"Adding address\"}]}"
+                },
+                {
+                    "role": "USER",
+                    "content": "Add an array called \"hobbies\" with three items: \"reading\", \"hiking\", \"cooking\""
+                },
+                {
+                    "role": "ASSISTANT",
+                    "content": "{\"actions\":[{\"type\":\"SET\",\"path\":\"/person/hobbies\",\"value\":\"[\\\"reading\\\",\\\"hiking\\\",\\\"cooking\\\"]\",\"from\":\"/person\",\"to\":\"/person/hobbies\",\"message\":\"Adding hobbies array\"}]}"
+                },
+                {
+                    "role": "USER",
+                    "content": "Rename the \"email\" field to \"contact_email\""
+                }
+            ],
+            "schema": "{\"method\":\"respond: Respond to user with structured actions\",\"parameters\":[{\"description\":\"The user's message describing what they want to do with the JSON document\",\"value\":\"Rename the \\\"email\\\" field to \\\"contact_email\\\"\"}],\"resultSchema\":{\"actions\":[\"actions\"]}}",
+            "requestInput": "System: You are a specialized AI Assistant that handles request/response method calls and returns results in JSON or plain text.\n\nRules:\n1. A JSON block describes the method, its parameters, and any stored memory.\n2. The 'resultSchema' field indicates the JSON format you must return.\n   - Do NOT add any fields not mentioned in the schema.\n   - If the schema is \"Text\", return plain text without JSON wrapping.\n3. If memory is provided, use it to inform your answer.\n4. Do not include apology statements, disclaimers, or meta-commentary.\n5. Return only the specified structure or text, without superfluous information.\n6. When a Memorize key is present, the result will be stored for later — minimize tokens, maximize content.\n# JSON DOCUMENT CONTEXT\n**File:** C:\\Users\\Adam\\git\\BabelFit\\BabelFit-Kotlin\\samples\\json-editor\\cli\\test.json\n**Structure:** Object with keys: colors, person\n**Nodes:** 39 | **Depth:** 4\n\n## Current Document\n```json\n{\n    \"colors\": [\n        {\n            \"color\": \"red\",\n            \"items\": [\n                \"apple\",\n                \"strawberry\"\n            ]\n        },\n        {\n            \"color\": \"green\",\n            \"items\": [\n                \"grass\",\n                \"leaf\"\n            ]\n        },\n        {\n            \"color\": \"blue\",\n            \"items\": [\n                \"sky\",\n                \"ocean\"\n            ]\n        },\n        {\n            \"color\": \"yellow\",\n            \"items\": [\n                \"banana\",\n                \"sun\"\n            ]\n        },\n        {\n            \"color\": \"purple\",\n            \"items\": [\n                \"grape\",\n                \"violet\"\n            ]\n        }\n    ],\n    \"person\": {\n        \"name\": \"Alice\",\n        \"age\": 30,\n        \"email\": \"alice@example.com\",\n        \"address\": {\n            \"street\": \"123 Main St\",\n            \"city\": \"Springfield\",\n            \"state\": \"IL\"\n        },\n        \"hobbies\": [\n            \"reading\",\n            \"hiking\",\n            \"cooking\"\n        ]\n    }\n}\n```\n\n## Path Format\nUse JSON Pointer paths with '/' separators. Examples:\n- Root: \"\" or \"/\"\n- Object key: \"/users\"\n- Nested: \"/users/0/name\"\n- Array index: \"/items/2\"\nMemory:\n{}",
+            "responseOutput": "JsonEditorResponse(actions=[EditorAction(type=MOVE, path=/person/contact_email, value=\"alice@example.com\", from=/person/email, to=/person/contact_email, message=Renaming email field to contact_email.)])"
+        },
+        {
+            "id": "bd32f6e1-c7c2-4cb3-a0f2-7d6538056823",
+            "type": "REQUEST",
+            "parentId": "8900d575-f654-4c3f-aeea-fd7169db989e",
+            "startTimeMs": 1772410870718,
+            "endTimeMs": 1772410873584,
+            "name": "Request: respond"
+        },
+        {
+            "id": "bd32f6e1-c7c2-4cb3-a0f2-7d6538056823-attempt-1",
+            "type": "ATTEMPT",
+            "parentId": "bd32f6e1-c7c2-4cb3-a0f2-7d6538056823",
+            "startTimeMs": 1772410870718,
+            "endTimeMs": 1772410873584,
+            "name": "Attempt 1",
+            "messages": [
+                {
+                    "role": "USER",
+                    "content": "Create a JSON document representing a person with name \"Alice\", age 30, and email \"alice@example.com\""
+                },
+                {
+                    "role": "ASSISTANT",
+                    "content": "{\"actions\":[{\"type\":\"SET\",\"path\":\"/person\",\"value\":\"{\\\"name\\\":\\\"Alice\\\",\\\"age\\\":30,\\\"email\\\":\\\"alice@example.com\\\"}\",\"message\":\"Creating a JSON document for a person.\"}]}"
+                },
+                {
+                    "role": "USER",
+                    "content": "Add a nested \"address\" object with street \"123 Main St\", city \"Springfield\", and state \"IL\""
+                },
+                {
+                    "role": "ASSISTANT",
+                    "content": "{\"actions\":[{\"type\":\"SET\",\"path\":\"/person/address\",\"value\":\"{\\\"street\\\":\\\"123 Main St\\\",\\\"city\\\":\\\"Springfield\\\",\\\"state\\\":\\\"IL\\\"}\",\"from\":\"/person\",\"to\":\"/person/address\",\"message\":\"Adding address\"}]}"
+                },
+                {
+                    "role": "USER",
+                    "content": "Add an array called \"hobbies\" with three items: \"reading\", \"hiking\", \"cooking\""
+                },
+                {
+                    "role": "ASSISTANT",
+                    "content": "{\"actions\":[{\"type\":\"SET\",\"path\":\"/person/hobbies\",\"value\":\"[\\\"reading\\\",\\\"hiking\\\",\\\"cooking\\\"]\",\"from\":\"/person\",\"to\":\"/person/hobbies\",\"message\":\"Adding hobbies array\"}]}"
+                },
+                {
+                    "role": "USER",
+                    "content": "Rename the \"email\" field to \"contact_email\""
+                },
+                {
+                    "role": "ASSISTANT",
+                    "content": "{\"actions\":[{\"type\":\"MOVE\",\"path\":\"/person/contact_email\",\"value\":\"\\\"alice@example.com\\\"\",\"from\":\"/person/email\",\"to\":\"/person/contact_email\",\"message\":\"Renaming email field to contact_email.\"}]}"
+                },
+                {
+                    "role": "USER",
+                    "content": "What is the current structure of the document? Explain it to me."
+                }
+            ],
+            "schema": "{\"method\":\"respond: Respond to user with structured actions\",\"parameters\":[{\"description\":\"The user's message describing what they want to do with the JSON document\",\"value\":\"What is the current structure of the document? Explain it to me.\"}],\"resultSchema\":{\"actions\":[\"actions\"]}}",
+            "requestInput": "System: You are a specialized AI Assistant that handles request/response method calls and returns results in JSON or plain text.\n\nRules:\n1. A JSON block describes the method, its parameters, and any stored memory.\n2. The 'resultSchema' field indicates the JSON format you must return.\n   - Do NOT add any fields not mentioned in the schema.\n   - If the schema is \"Text\", return plain text without JSON wrapping.\n3. If memory is provided, use it to inform your answer.\n4. Do not include apology statements, disclaimers, or meta-commentary.\n5. Return only the specified structure or text, without superfluous information.\n6. When a Memorize key is present, the result will be stored for later — minimize tokens, maximize content.\n# JSON DOCUMENT CONTEXT\n**File:** C:\\Users\\Adam\\git\\BabelFit\\BabelFit-Kotlin\\samples\\json-editor\\cli\\test.json\n**Structure:** Object with keys: colors, person\n**Nodes:** 39 | **Depth:** 4\n\n## Current Document\n```json\n{\n    \"colors\": [\n        {\n            \"color\": \"red\",\n            \"items\": [\n                \"apple\",\n                \"strawberry\"\n            ]\n        },\n        {\n            \"color\": \"green\",\n            \"items\": [\n                \"grass\",\n                \"leaf\"\n            ]\n        },\n        {\n            \"color\": \"blue\",\n            \"items\": [\n                \"sky\",\n                \"ocean\"\n            ]\n        },\n        {\n            \"color\": \"yellow\",\n            \"items\": [\n                \"banana\",\n                \"sun\"\n            ]\n        },\n        {\n            \"color\": \"purple\",\n            \"items\": [\n                \"grape\",\n                \"violet\"\n            ]\n        }\n    ],\n    \"person\": {\n        \"name\": \"Alice\",\n        \"age\": 30,\n        \"address\": {\n            \"street\": \"123 Main St\",\n            \"city\": \"Springfield\",\n            \"state\": \"IL\"\n        },\n        \"hobbies\": [\n            \"reading\",\n            \"hiking\",\n            \"cooking\"\n        ],\n        \"contact_email\": \"alice@example.com\"\n    }\n}\n```\n\n## Path Format\nUse JSON Pointer paths with '/' separators. Examples:\n- Root: \"\" or \"/\"\n- Object key: \"/users\"\n- Nested: \"/users/0/name\"\n- Array index: \"/items/2\"\nMemory:\n{}",
+            "responseOutput": "JsonEditorResponse(actions=[EditorAction(type=EXPLAIN, path=, value=The 'colors' key is an array of objects representing different colors and their associated items, such as fruits or nature items. The 'person' key is an object containing details about a person named Alice, including her name, age, a nested 'address' object (which includes street, city, and state), an array of 'hobbies', and her contact email address., from=, to=, message=The structure of the document contains two main keys: 'colors' and 'person'.)])"
+        },
+        {
+            "id": "91d98aa1-d9f8-433e-8e0c-a5a101ec0f69-attempt-1",
+            "type": "ATTEMPT",
+            "parentId": "91d98aa1-d9f8-433e-8e0c-a5a101ec0f69",
+            "startTimeMs": 1772410873586,
+            "endTimeMs": 1772410874907,
+            "name": "Attempt 1",
+            "messages": [
+                {
+                    "role": "USER",
+                    "content": "Create a JSON document representing a person with name \"Alice\", age 30, and email \"alice@example.com\""
+                },
+                {
+                    "role": "ASSISTANT",
+                    "content": "{\"actions\":[{\"type\":\"SET\",\"path\":\"/person\",\"value\":\"{\\\"name\\\":\\\"Alice\\\",\\\"age\\\":30,\\\"email\\\":\\\"alice@example.com\\\"}\",\"message\":\"Creating a JSON document for a person.\"}]}"
+                },
+                {
+                    "role": "USER",
+                    "content": "Add a nested \"address\" object with street \"123 Main St\", city \"Springfield\", and state \"IL\""
+                },
+                {
+                    "role": "ASSISTANT",
+                    "content": "{\"actions\":[{\"type\":\"SET\",\"path\":\"/person/address\",\"value\":\"{\\\"street\\\":\\\"123 Main St\\\",\\\"city\\\":\\\"Springfield\\\",\\\"state\\\":\\\"IL\\\"}\",\"from\":\"/person\",\"to\":\"/person/address\",\"message\":\"Adding address\"}]}"
+                },
+                {
+                    "role": "USER",
+                    "content": "Add an array called \"hobbies\" with three items: \"reading\", \"hiking\", \"cooking\""
+                },
+                {
+                    "role": "ASSISTANT",
+                    "content": "{\"actions\":[{\"type\":\"SET\",\"path\":\"/person/hobbies\",\"value\":\"[\\\"reading\\\",\\\"hiking\\\",\\\"cooking\\\"]\",\"from\":\"/person\",\"to\":\"/person/hobbies\",\"message\":\"Adding hobbies array\"}]}"
+                },
+                {
+                    "role": "USER",
+                    "content": "Rename the \"email\" field to \"contact_email\""
+                },
+                {
+                    "role": "ASSISTANT",
+                    "content": "{\"actions\":[{\"type\":\"MOVE\",\"path\":\"/person/contact_email\",\"value\":\"\\\"alice@example.com\\\"\",\"from\":\"/person/email\",\"to\":\"/person/contact_email\",\"message\":\"Renaming email field to contact_email.\"}]}"
+                },
+                {
+                    "role": "USER",
+                    "content": "What is the current structure of the document? Explain it to me."
+                },
+                {
+                    "role": "ASSISTANT",
+                    "content": "{\"actions\":[{\"type\":\"EXPLAIN\",\"value\":\"The 'colors' key is an array of objects representing different colors and their associated items, such as fruits or nature items. The 'person' key is an object containing details about a person named Alice, including her name, age, a nested 'address' object (which includes street, city, and state), an array of 'hobbies', and her contact email address.\",\"message\":\"The structure of the document contains two main keys: 'colors' and 'person'.\"}]}"
+                },
+                {
+                    "role": "USER",
+                    "content": "Delete the \"state\" field from the address"
+                }
+            ],
+            "schema": "{\"method\":\"respond: Respond to user with structured actions\",\"parameters\":[{\"description\":\"The user's message describing what they want to do with the JSON document\",\"value\":\"Delete the \\\"state\\\" field from the address\"}],\"resultSchema\":{\"actions\":[\"actions\"]}}",
+            "requestInput": "System: You are a specialized AI Assistant that handles request/response method calls and returns results in JSON or plain text.\n\nRules:\n1. A JSON block describes the method, its parameters, and any stored memory.\n2. The 'resultSchema' field indicates the JSON format you must return.\n   - Do NOT add any fields not mentioned in the schema.\n   - If the schema is \"Text\", return plain text without JSON wrapping.\n3. If memory is provided, use it to inform your answer.\n4. Do not include apology statements, disclaimers, or meta-commentary.\n5. Return only the specified structure or text, without superfluous information.\n6. When a Memorize key is present, the result will be stored for later — minimize tokens, maximize content.\n# JSON DOCUMENT CONTEXT\n**File:** C:\\Users\\Adam\\git\\BabelFit\\BabelFit-Kotlin\\samples\\json-editor\\cli\\test.json\n**Structure:** Object with keys: colors, person\n**Nodes:** 39 | **Depth:** 4\n\n## Current Document\n```json\n{\n    \"colors\": [\n        {\n            \"color\": \"red\",\n            \"items\": [\n                \"apple\",\n                \"strawberry\"\n            ]\n        },\n        {\n            \"color\": \"green\",\n            \"items\": [\n                \"grass\",\n                \"leaf\"\n            ]\n        },\n        {\n            \"color\": \"blue\",\n            \"items\": [\n                \"sky\",\n                \"ocean\"\n            ]\n        },\n        {\n            \"color\": \"yellow\",\n            \"items\": [\n                \"banana\",\n                \"sun\"\n            ]\n        },\n        {\n            \"color\": \"purple\",\n            \"items\": [\n                \"grape\",\n                \"violet\"\n            ]\n        }\n    ],\n    \"person\": {\n        \"name\": \"Alice\",\n        \"age\": 30,\n        \"address\": {\n            \"street\": \"123 Main St\",\n            \"city\": \"Springfield\",\n            \"state\": \"IL\"\n        },\n        \"hobbies\": [\n            \"reading\",\n            \"hiking\",\n            \"cooking\"\n        ],\n        \"contact_email\": \"alice@example.com\"\n    }\n}\n```\n\n## Path Format\nUse JSON Pointer paths with '/' separators. Examples:\n- Root: \"\" or \"/\"\n- Object key: \"/users\"\n- Nested: \"/users/0/name\"\n- Array index: \"/items/2\"\nMemory:\n{}",
+            "responseOutput": "JsonEditorResponse(actions=[EditorAction(type=DELETE, path=/person/address/state, value=, from=/person/address/state, to=, message=Removing the state field from the address.)])"
+        },
+        {
+            "id": "91d98aa1-d9f8-433e-8e0c-a5a101ec0f69",
+            "type": "REQUEST",
+            "parentId": "8900d575-f654-4c3f-aeea-fd7169db989e",
+            "startTimeMs": 1772410873586,
+            "endTimeMs": 1772410874907,
+            "name": "Request: respond"
+        }
+    ]
+}

@@ -11,8 +11,10 @@ import ca.adamhammer.babelfit.samples.traceviewer.api.SpanNode
 import ca.adamhammer.babelfit.samples.traceviewer.api.TraceAnalysisSession
 import ca.adamhammer.babelfit.samples.traceviewer.api.TraceLoader
 import ca.adamhammer.babelfit.samples.traceviewer.api.TraceStatistics
+import ca.adamhammer.babelfit.samples.traceviewer.api.TraceReportFormatter
 import ca.adamhammer.babelfit.samples.traceviewer.api.TraceStats
 import ca.adamhammer.babelfit.samples.traceviewer.models.TraceAnalysis
+import ca.adamhammer.babelfit.samples.traceviewer.models.TraceComparison
 import com.openai.models.ChatModel
 import kotlinx.coroutines.runBlocking
 import java.io.File
@@ -22,6 +24,7 @@ private const val USAGE = """Usage: trace-viewer <trace.btrace.json> [options]
 Options:
   --analyze              Run AI-powered analysis (interactive)
   --report               Generate full markdown report (batch mode)
+  --compare <file>       Compare with a previous trace (shows deltas)
   --vendor <name>        AI vendor: openai, anthropic, gemini (default: openai)
   --model <model>        Model name (default: vendor default)
   --output <file>        Output file for report (default: stdout)"""
@@ -35,6 +38,7 @@ fun main(args: Array<String>) = runBlocking {
     val filePath = args[0]
     val doAnalyze = args.any { it == "--analyze" }
     val doReport = args.any { it == "--report" }
+    val comparePath = argValue(args, "--compare")
     val vendor = argValue(args, "--vendor") ?: "openai"
     val model = argValue(args, "--model")
     val outputPath = argValue(args, "--output")
@@ -46,9 +50,19 @@ fun main(args: Array<String>) = runBlocking {
     }
 
     val trace = TraceLoader.loadFromFile(file)
+    val comparison = comparePath?.let { path ->
+        val prevFile = File(path)
+        if (!prevFile.exists()) {
+            System.err.println("Comparison file not found: $path")
+            null
+        } else {
+            val prevTrace = TraceLoader.loadFromFile(prevFile)
+            TraceStats.compareTraces(trace, prevTrace)
+        }
+    }
 
     if (doReport) {
-        runReport(trace, vendor, model, outputPath)
+        runReport(trace, vendor, model, outputPath, comparison)
         return@runBlocking
     }
 
@@ -62,6 +76,7 @@ fun main(args: Array<String>) = runBlocking {
     val stats = TraceStats.computeStats(trace)
 
     printStats(stats)
+    if (comparison != null) printComparison(comparison)
     printSpanTree(roots)
 
     if (doAnalyze) {
@@ -90,6 +105,17 @@ private fun printStats(stats: TraceStatistics) {
     println("  Failures:   ${stats.failureCount}")
     println("  Retried:    ${stats.retriedRequestCount}")
     println("  Dup Prompts:${stats.duplicatePromptCount}")
+    println()
+}
+
+private fun printComparison(comparison: TraceComparison) {
+    println("  ── Comparison vs Previous ──────────────────────────")
+    println("  %-20s %-12s %-12s %s".format("Metric", "Previous", "Current", "Delta"))
+    println("  ${"─".repeat(60)}")
+    for (delta in comparison.deltas) {
+        val marker = if (delta.improved) "+" else if (delta.delta.startsWith("+0") || delta.delta.startsWith("0")) "=" else "-"
+        println("  %-20s %-12s %-12s %s %s".format(delta.metric, delta.previous, delta.current, marker, delta.delta))
+    }
     println()
 }
 
@@ -138,18 +164,25 @@ private suspend fun runReport(
     trace: TraceExport,
     vendor: String,
     model: String?,
-    outputPath: String?
+    outputPath: String?,
+    comparison: TraceComparison?
 ) {
     System.err.println("Generating report...")
     val adapter = createAdapter(vendor, model)
     val session = TraceAnalysisSession(apiAdapter = adapter)
     val report = session.generateReport(trace)
 
+    val fullReport = if (comparison != null) {
+        report.markdownSummary + "\n" + TraceReportFormatter.formatComparison(comparison)
+    } else {
+        report.markdownSummary
+    }
+
     if (outputPath != null) {
-        File(outputPath).writeText(report.markdownSummary)
+        File(outputPath).also { it.parentFile?.mkdirs() }.writeText(fullReport)
         System.err.println("Report written to $outputPath")
     } else {
-        println(report.markdownSummary)
+        println(fullReport)
     }
 }
 

@@ -1,0 +1,9 @@
+# JSON Editor eval script — exercises basic CRUD operations
+# Each line is a prompt sent to the editor session
+
+Create a JSON document representing a person with name "Alice", age 30, and email "alice@example.com"
+Add a nested "address" object with street "123 Main St", city "Springfield", and state "IL"
+Add an array called "hobbies" with three items: "reading", "hiking", "cooking"
+Rename the "email" field to "contact_email"
+What is the current structure of the document? Explain it to me.
+Delete the "state" field from the address

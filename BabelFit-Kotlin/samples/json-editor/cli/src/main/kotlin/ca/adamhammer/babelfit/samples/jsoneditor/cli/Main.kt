@@ -9,104 +9,163 @@ import ca.adamhammer.babelfit.samples.jsoneditor.api.JsonEditorListener
 import ca.adamhammer.babelfit.samples.jsoneditor.api.JsonEditorSession
 import ca.adamhammer.babelfit.samples.jsoneditor.model.JsonDocument
 import kotlinx.coroutines.runBlocking
+import java.io.File
 
 fun main(args: Array<String>) = runBlocking {
     val agentMode = args.contains("--agent")
-    val filePath = args.firstOrNull { !it.startsWith("--") } ?: "test.json"
+    val scriptPath = argValue(args, "--script")
+    val tracePath = argValue(args, "--trace")
+    val filePath = args.firstOrNull { !it.startsWith("--") && it != scriptPath && it != tracePath } ?: "test.json"
 
     val openAiAdapter = OpenAiAdapter()
     val traceSession = TraceSession()
     val adapter = TracingAdapter(openAiAdapter, traceSession)
-    val mode = if (agentMode) "Agent" else "Simple"
 
+    printBanner(filePath, agentMode, scriptPath, traceSession)
+
+    val listener = CliJsonEditorListener()
+    val requestListeners = listOf(TracingRequestListener(traceSession))
+    val scriptLines = scriptPath?.let { parseScriptFile(it) }
+    val askHandler = buildAskHandler(scriptLines, scriptPath != null)
+
+    val ops = createSession(agentMode, adapter, listener, filePath, requestListeners, askHandler)
+
+    if (scriptLines != null) {
+        scriptedRun(scriptLines.prompts, ops)
+    } else {
+        replLoop(ops)
+    }
+
+    saveTrace(traceSession, tracePath)
+}
+
+private fun printBanner(filePath: String, agentMode: Boolean, scriptPath: String?, traceSession: TraceSession) {
+    val mode = if (agentMode) "Agent" else "Simple"
     println("═══════════════════════════════════════════════════════")
     println("  BabelFit JSON Editor — Conversational Document Editing")
     println("═══════════════════════════════════════════════════════")
     println("  File: $filePath")
     println("  Mode: $mode")
+    if (scriptPath != null) println("  Script: $scriptPath")
     println("  Debug: ${traceSession.getSessionId()} (.btrace.json will be saved on exit)")
     println()
     println("  Commands: 'show' (print doc), 'save', 'exit'")
     println("  Or type naturally to edit the document.")
     println("═══════════════════════════════════════════════════════")
-
-    val listener = CliJsonEditorListener()
-    val requestListeners = listOf(TracingRequestListener(traceSession))
-    val askHandler: suspend (String) -> String = { question ->
-        println("\n  [?] $question")
-        print("  > ")
-        readlnOrNull()?.trim() ?: ""
-    }
-
-    if (agentMode) {
-        val session = AgentJsonEditorSession(
-            apiAdapter = adapter,
-            listener = listener,
-            filePath = filePath,
-            requestListeners = requestListeners,
-            askHandler = askHandler
-        )
-        replLoop(session)
-    } else {
-        val session = JsonEditorSession(
-            apiAdapter = adapter,
-            listener = listener,
-            filePath = filePath,
-            requestListeners = requestListeners,
-            askHandler = askHandler
-        )
-        replLoop(session)
-    }
-    traceSession.save()
 }
 
-private suspend fun replLoop(session: JsonEditorSession) {
-    while (true) {
-        print("\n> ")
-        val input = readlnOrNull()?.trim() ?: break
+private data class SessionOps(
+    val chat: suspend (String) -> Unit,
+    val save: suspend () -> Unit,
+    val show: () -> String,
+    val filePath: () -> String
+)
 
-        when (input.lowercase()) {
-            "exit", "quit" -> {
-                session.save()
-                println("Saved and exiting.")
-                break
-            }
-            "save" -> {
-                session.save()
-                println("Saved to ${session.filePath()}")
-            }
-            "show" -> {
-                println(session.currentDocument().toJsonString())
-            }
-            "" -> continue
-            else -> {
-                session.chat(input)
-            }
+private fun buildAskHandler(scriptLines: ScriptInput?, isScripted: Boolean): suspend (String) -> String {
+    val askResponses = scriptLines?.askResponses?.toMutableList() ?: mutableListOf()
+    return { question ->
+        println("\n  [?] $question")
+        if (askResponses.isNotEmpty()) {
+            val answer = askResponses.removeFirst()
+            println("  > $answer  [scripted]")
+            answer
+        } else if (isScripted) {
+            val fallback = "Please proceed with your best judgment"
+            println("  > $fallback  [auto]")
+            fallback
+        } else {
+            print("  > ")
+            readlnOrNull()?.trim() ?: ""
         }
     }
 }
 
-private suspend fun replLoop(session: AgentJsonEditorSession) {
+private fun createSession(
+    agentMode: Boolean,
+    adapter: TracingAdapter,
+    listener: JsonEditorListener,
+    filePath: String,
+    requestListeners: List<TracingRequestListener>,
+    askHandler: suspend (String) -> String
+): SessionOps {
+    return if (agentMode) {
+        val session = AgentJsonEditorSession(
+            apiAdapter = adapter, listener = listener, filePath = filePath,
+            requestListeners = requestListeners, askHandler = askHandler
+        )
+        SessionOps({ session.chat(it) }, { session.save() },
+            { session.currentDocument().toJsonString() }, { session.filePath() })
+    } else {
+        val session = JsonEditorSession(
+            apiAdapter = adapter, listener = listener, filePath = filePath,
+            requestListeners = requestListeners, askHandler = askHandler
+        )
+        SessionOps({ session.chat(it) }, { session.save() },
+            { session.currentDocument().toJsonString() }, { session.filePath() })
+    }
+}
+
+private fun saveTrace(traceSession: TraceSession, tracePath: String?) {
+    if (tracePath != null) {
+        traceSession.save(File(tracePath).also { it.parentFile?.mkdirs() })
+    } else {
+        traceSession.save()
+    }
+}
+
+private fun argValue(args: Array<String>, flag: String): String? {
+    val idx = args.indexOf(flag)
+    return if (idx >= 0 && idx + 1 < args.size) args[idx + 1] else null
+}
+
+private data class ScriptInput(val prompts: List<String>, val askResponses: List<String>)
+
+private fun parseScriptFile(path: String): ScriptInput {
+    val lines = File(path).readLines()
+    val prompts = mutableListOf<String>()
+    val askResponses = mutableListOf<String>()
+    for (line in lines) {
+        val trimmed = line.trim()
+        when {
+            trimmed.isEmpty() || trimmed.startsWith("#") -> continue
+            trimmed.startsWith(">") -> askResponses.add(trimmed.removePrefix(">").trim())
+            else -> prompts.add(trimmed)
+        }
+    }
+    return ScriptInput(prompts, askResponses)
+}
+
+private suspend fun scriptedRun(prompts: List<String>, ops: SessionOps) {
+    for ((i, prompt) in prompts.withIndex()) {
+        println("\n[${ i + 1}/${prompts.size}] > $prompt")
+        ops.chat(prompt)
+    }
+    ops.save()
+    println("\nScript complete. Final document:")
+    println(ops.show())
+}
+
+private suspend fun replLoop(ops: SessionOps) {
     while (true) {
         print("\n> ")
         val input = readlnOrNull()?.trim() ?: break
 
         when (input.lowercase()) {
             "exit", "quit" -> {
-                session.save()
+                ops.save()
                 println("Saved and exiting.")
                 break
             }
             "save" -> {
-                session.save()
-                println("Saved to ${session.filePath()}")
+                ops.save()
+                println("Saved to ${ops.filePath()}")
             }
             "show" -> {
-                println(session.currentDocument().toJsonString())
+                println(ops.show())
             }
             "" -> continue
             else -> {
-                session.chat(input)
+                ops.chat(input)
             }
         }
     }

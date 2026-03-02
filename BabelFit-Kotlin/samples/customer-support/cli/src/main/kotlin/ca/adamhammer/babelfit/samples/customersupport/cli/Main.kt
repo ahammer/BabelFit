@@ -11,8 +11,12 @@ import ca.adamhammer.babelfit.samples.customersupport.models.CompanyTemplate
 import ca.adamhammer.babelfit.samples.customersupport.models.CustomerContext
 import ca.adamhammer.babelfit.samples.customersupport.models.SupportResponse
 import kotlinx.coroutines.runBlocking
+import java.io.File
 
-fun main() = runBlocking {
+fun main(args: Array<String>) = runBlocking {
+    val scriptPath = argValue(args, "--script")
+    val tracePath = argValue(args, "--trace")
+
     val openAiAdapter = OpenAiAdapter()
     val traceSession = TraceSession()
     val adapter = TracingAdapter(openAiAdapter, traceSession)
@@ -32,6 +36,7 @@ fun main() = runBlocking {
     println("  Company: ${template.company}")
     println("  Customer: ${customer.name} (${customer.accountId})")
     println("  Product: ${template.product} — ${customer.productModel}")
+    if (scriptPath != null) println("  Script: $scriptPath")
     println("  Debug: ${traceSession.getSessionId()} (.btrace.json will be saved on exit)")
     println()
     println("  Type your support request. Type 'exit' to quit.")
@@ -47,23 +52,47 @@ fun main() = runBlocking {
     )
     session.startSession()
 
-    while (true) {
-        print("\n[You] > ")
-        val input = readlnOrNull()?.trim() ?: break
-        when (input.lowercase()) {
-            "exit", "quit" -> {
-                session.endSession()
-                println("Session ended. Goodbye!")
-                traceSession.save()
-                break
-            }
-            "" -> continue
-            else -> {
-                val response = session.chat(input)
-                // Response is printed by the listener
+    if (scriptPath != null) {
+        val prompts = parseScriptFile(scriptPath)
+        for ((i, prompt) in prompts.withIndex()) {
+            println("\n[${i + 1}/${prompts.size}] [You] > $prompt")
+            session.chat(prompt)
+        }
+        session.endSession()
+    } else {
+        while (true) {
+            print("\n[You] > ")
+            val input = readlnOrNull()?.trim() ?: break
+            when (input.lowercase()) {
+                "exit", "quit" -> {
+                    session.endSession()
+                    println("Session ended. Goodbye!")
+                    break
+                }
+                "" -> continue
+                else -> {
+                    session.chat(input)
+                }
             }
         }
     }
+
+    if (tracePath != null) {
+        traceSession.save(File(tracePath).also { it.parentFile?.mkdirs() })
+    } else {
+        traceSession.save()
+    }
+}
+
+private fun argValue(args: Array<String>, flag: String): String? {
+    val idx = args.indexOf(flag)
+    return if (idx >= 0 && idx + 1 < args.size) args[idx + 1] else null
+}
+
+private fun parseScriptFile(path: String): List<String> {
+    return File(path).readLines()
+        .map { it.trim() }
+        .filter { it.isNotEmpty() && !it.startsWith("#") }
 }
 
 class CliSupportListener : SupportEventListener {

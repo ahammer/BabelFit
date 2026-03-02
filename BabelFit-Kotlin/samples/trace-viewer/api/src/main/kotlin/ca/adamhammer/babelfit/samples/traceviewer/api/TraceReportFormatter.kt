@@ -4,6 +4,7 @@ import ca.adamhammer.babelfit.debug.trace.TraceExport
 import ca.adamhammer.babelfit.samples.traceviewer.models.AgentPrompt
 import ca.adamhammer.babelfit.samples.traceviewer.models.SpanAssessment
 import ca.adamhammer.babelfit.samples.traceviewer.models.TraceAnalysis
+import ca.adamhammer.babelfit.samples.traceviewer.models.TraceComparison
 
 object TraceReportFormatter {
 
@@ -147,5 +148,17 @@ object TraceReportFormatter {
             agentPrompt.keyChanges.forEach { appendLine("- $it") }
             appendLine()
         }
+    }
+
+    fun formatComparison(comparison: TraceComparison): String = buildString {
+        appendLine("## Comparison vs Previous Trace")
+        appendLine()
+        appendLine("| Metric | Previous | Current | Delta | Trend |")
+        appendLine("|--------|----------|---------|-------|-------|")
+        for (delta in comparison.deltas) {
+            val trend = if (delta.improved) "improved" else if (delta.delta.contains("+0")) "unchanged" else "regressed"
+            appendLine("| ${delta.metric} | ${delta.previous} | ${delta.current} | ${delta.delta} | $trend |")
+        }
+        appendLine()
     }
 }
