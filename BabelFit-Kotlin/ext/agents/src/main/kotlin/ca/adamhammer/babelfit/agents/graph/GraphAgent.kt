@@ -106,6 +106,15 @@ class GraphAgent<T : Any>(
         historyInterceptor?.clear()
     }
 
+    /** Reset the agent and start from a specific node instead of the default start. */
+    fun resetTo(node: String) {
+        require(node in graph.nodes) { "Node '$node' is not in the graph." }
+        currentNode = node
+        isFirstStep = true
+        lastStepValue = null
+        historyInterceptor?.clear()
+    }
+
     /** Execute one step: dispatch the current node, then transition. Blocking. */
     fun step(): AgentDispatcher.DispatchResult = runBlocking { stepSuspend() }
 

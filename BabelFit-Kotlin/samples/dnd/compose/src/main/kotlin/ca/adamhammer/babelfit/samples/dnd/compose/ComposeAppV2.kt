@@ -90,12 +90,21 @@ private fun SetupScreenV2(controller: ComposeGameControllerV2) {
                 onClick = { controller.randomizePrimer() },
                 colors = ButtonDefaults.buttonColors(backgroundColor = DmColor)
             ) { Text("🎲 Randomize") }
+            Button(
+                onClick = { controller.randomizeMixed() },
+                colors = ButtonDefaults.buttonColors(backgroundColor = DmColor)
+            ) { Text("🎲 Mix Genres") }
         }
 
         // Campaign card
         DarkCard {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Campaign Setting", style = MaterialTheme.typography.h6, color = BrightText)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Campaign Setting", style = MaterialTheme.typography.h6, color = BrightText)
+                    IconButton(onClick = { controller.randomizeSetting() }) {
+                        Text("🎲", style = MaterialTheme.typography.body1)
+                    }
+                }
                 OutlinedTextField(
                     modifier = Modifier.fillMaxWidth(),
                     value = setup.genre,
@@ -196,6 +205,9 @@ private fun SetupScreenV2(controller: ComposeGameControllerV2) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         AvatarCircle(draft.name.ifBlank { "P${index + 1}" }, avatarColor)
                         Text("Character ${index + 1}", style = MaterialTheme.typography.h6, color = BrightText)
+                        IconButton(onClick = { controller.randomizeCharacter(index) }) {
+                            Text("🎲", style = MaterialTheme.typography.body1)
+                        }
                     }
                     OutlinedTextField(
                         modifier = Modifier.fillMaxWidth(),

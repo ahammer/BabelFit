@@ -8,11 +8,30 @@ import java.util.concurrent.Future
 /**
  * AI interface for an autonomous party member. Each method represents a phase
  * of the AI character's decision-making process. Driven by [GraphAgent]
- * with deterministic transitions (no routing LLM calls needed).
+ * with LLM-driven transitions at multi-edge nodes.
  *
- * Flow: observeSituation → commitAction → (terminal)
+ * Flow: observeSituation → assessThreats|planCoordination|commitAction
+ *       assessThreats → planCoordination|commitAction
+ *       planCoordination → commitAction (deterministic)
+ *       reactToWhispers → observeSituation (deterministic, alternate entry point)
  */
 interface PlayerAgentAPI {
+
+    @AiOperation(
+        summary = "React to Whispers",
+        description = "You have received private whispers from party members. " +
+                "Use read_whispers to see what was said. " +
+                "Consider how these messages affect your plans, your relationships, " +
+                "and your emotional state. Note any tactical coordination suggested. " +
+                "This context will inform your observations and action this turn."
+    )
+    @AiResponse(
+        description = "Your reaction to whispers — how they affect your plans and emotional state",
+        responseClass = String::class
+    )
+    @Memorize(label = "Whisper reactions")
+    @Transitions("observeSituation")
+    fun reactToWhispers(): Future<String>
 
     @AiOperation(
         summary = "Observe and Plan",
@@ -30,8 +49,45 @@ interface PlayerAgentAPI {
         responseClass = String::class
     )
     @Memorize(label = "Current observations and plan")
-    @Transitions("commitAction")
+    @Transitions("assessThreats", "planCoordination", "commitAction")
     fun observeSituation(): Future<String>
+
+    @AiOperation(
+        summary = "Assess Threats and Opportunities",
+        description = "Evaluate the tactical situation using your tools. " +
+                "Use inspect_location to check exits and NPCs. " +
+                "Use inspect_party_status to see who needs healing or support. " +
+                "Use inspect_npc to learn about nearby NPCs' motivations. " +
+                "Determine: Are there threats to respond to? Allies in need? " +
+                "Opportunities to exploit with your class abilities? " +
+                "Decide whether you need to coordinate with teammates before acting."
+    )
+    @AiResponse(
+        description = "Threat and opportunity assessment based on tool queries",
+        responseClass = String::class
+    )
+    @Memorize(label = "Threat assessment")
+    @Transitions("planCoordination", "commitAction")
+    fun assessThreats(): Future<String>
+
+    @AiOperation(
+        summary = "Plan Coordination",
+        description = "Review what other party members are doing this round. " +
+                "Use check_party_intentions to see committed actions. " +
+                "Use read_whispers to check for private messages from teammates. " +
+                "Decide how to complement the party's efforts: " +
+                "if others are fighting, consider support or flanking; " +
+                "if others are socializing, consider scouting or guarding; " +
+                "if someone whispered a plan, decide whether to follow it. " +
+                "Choose an action that adds unique value based on your class role."
+    )
+    @AiResponse(
+        description = "Coordination plan considering party intentions and whispers",
+        responseClass = String::class
+    )
+    @Memorize(label = "Coordination plan")
+    @Transitions("commitAction")
+    fun planCoordination(): Future<String>
 
     @AiOperation(
         summary = "Commit Action",

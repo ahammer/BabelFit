@@ -16,6 +16,7 @@ import java.util.concurrent.Future
  * The Dungeon Master AI interface. Each method represents a DM action
  * that the AI will narrate and resolve for a multi-player party.
  */
+@Suppress("TooManyFunctions")
 interface DungeonMasterAPI {
 
     @AiOperation(

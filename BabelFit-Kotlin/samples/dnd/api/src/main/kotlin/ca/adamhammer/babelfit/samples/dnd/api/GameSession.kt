@@ -18,8 +18,12 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Collections
 import java.util.Base64
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.concurrent.thread
 import kotlin.random.Random
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 
 @Suppress("LongMethod", "LargeClass", "CyclomaticComplexMethod", "TooManyFunctions", "SwallowedException", "MaxLineLength")
 class GameSession(
@@ -50,6 +54,7 @@ class GameSession(
     private val markdownTimeline: MutableList<MarkdownEntry> = Collections.synchronizedList(mutableListOf())
     private val imageWorkers: MutableList<Thread> = Collections.synchronizedList(mutableListOf())
     private val deadCharacters: MutableList<Character> = mutableListOf()
+    private val roundIntentions: ConcurrentHashMap<String, PlayerAction> = ConcurrentHashMap()
     private var teamImagePrompt: String = ""
     private var openingScene: SceneDescription = SceneDescription()
 
@@ -59,6 +64,7 @@ class GameSession(
         dmInstance = babelFit<DungeonMasterAPI> {
             adapter(apiAdapter)
             addInterceptor(WorldStateInterceptor { world })
+            toolProvider(DmToolProvider { world })
             requestListeners.forEach { listener(it) }
             resilience {
                 maxRetries = 2
@@ -205,16 +211,26 @@ class GameSession(
     }
 
     private suspend fun processRound() {
-        val currentRoundCharacters = world.party.toList()
-        
-        for (character in currentRoundCharacters) {
-            val currentStats = world.party.find { it.name == character.name } ?: continue
-            
-            if (currentStats.hp <= 0) {
-                continue
-            }
+        val currentRoundCharacters = world.party.filter { it.hp > 0 }
+        roundIntentions.clear()
 
-            val playerAction = resolveCharacterAction(currentStats)
+        // Phase 1: Collect all player intentions in parallel
+        val collectedActions = coroutineScope {
+            currentRoundCharacters.map { character ->
+                async {
+                    val currentStats = world.party.find { it.name == character.name } ?: return@async null
+                    val playerAction = resolveCharacterAction(currentStats)
+                    roundIntentions[currentStats.name] = playerAction
+                    currentStats.name to playerAction
+                }
+            }.awaitAll().filterNotNull()
+        }
+
+        // Phase 2: Resolve actions sequentially (DM resolves each against world state)
+        for ((characterName, playerAction) in collectedActions) {
+            val currentStats = world.party.find { it.name == characterName } ?: continue
+            if (currentStats.hp <= 0) continue
+
             val action = playerAction.action.ifBlank { "I hold my position and reassess." }
 
             val actionProposals = dm.proposeActionOutcomes(currentStats.name, action).get()
@@ -229,13 +245,13 @@ class GameSession(
             world = applyResult(world, finalResult, currentStats.name)
             world = applyPlayerStateUpdate(world, currentStats.name, playerAction)
             checkForDeaths()
-            
+
             val logEntry = "Round ${world.round}: ${currentStats.name} — $action → " +
                 (if (finalResult.success) "success" else "failure") + ". DM: ${finalResult.narrative.take(150)}"
-            
+
             characterPreviousActions.getOrPut(currentStats.name) { mutableListOf() }
                 .apply { add(logEntry); if (size > 5) removeFirst() }
-                
+
             world = world.copy(
                 actionLog = (world.actionLog + logEntry).takeLast(40)
             )
@@ -269,7 +285,14 @@ class GameSession(
         )
         if (agent != null) {
             try {
-                agent.reset()
+                val hasUnreadWhispers = world.whisperLog.any {
+                    it.to.equals(character.name, ignoreCase = true) && it.round >= world.round - 1
+                }
+                if (hasUnreadWhispers) {
+                    agent.resetTo("reactToWhispers")
+                } else {
+                    agent.reset()
+                }
                 for (stepIndex in 0 until AGENT_TURN_BUDGET) {
                     val stepResult = try {
                         agent.stepSuspend()
@@ -425,33 +448,11 @@ class GameSession(
     }
 
     private fun normalizeRollModifier(character: Character, roll: DiceRollRequest): Int {
-        val expected = expectedRollModifier(character, roll.rollType)
+        val expected = CharacterUtils.expectedRollModifier(character, roll.rollType)
         if (expected == null) {
             return roll.modifier
         }
         return expected
-    }
-
-    private fun expectedRollModifier(character: Character, rollType: String): Int? {
-        val text = rollType.lowercase()
-        val scores = character.abilityScores
-        val abilityMod = when {
-            "strength" in text || "athletics" in text -> CharacterUtils.abilityModifier(scores.str)
-            "dexterity" in text || "stealth" in text || "acrobatics" in text || "sleight" in text -> CharacterUtils.abilityModifier(scores.dex)
-            "constitution" in text -> CharacterUtils.abilityModifier(scores.con)
-            "intelligence" in text || "arcana" in text || "investigation" in text || "history" in text || "nature" in text || "religion" in text -> CharacterUtils.abilityModifier(scores.int)
-            "wisdom" in text || "perception" in text || "insight" in text || "animal handling" in text || "medicine" in text || "survival" in text -> CharacterUtils.abilityModifier(scores.wis)
-            "charisma" in text || "deception" in text || "intimidation" in text || "performance" in text || "persuasion" in text -> CharacterUtils.abilityModifier(scores.cha)
-            else -> return null
-        }
-
-        val proficiency = if (character.skills.any { text.contains(it.lowercase()) }) {
-            character.proficiencyBonus
-        } else {
-            0
-        }
-
-        return abilityMod + proficiency
     }
 
     private fun buildAiAgents(world: World): Map<String, GraphAgent<PlayerAgentAPI>> {
@@ -463,7 +464,7 @@ class GameSession(
                 this@GameSession.world.party.first { it.name == character.name }
             }
 
-            val toolProvider = PlayerToolProvider(characterProvider)
+            val toolProvider = PlayerToolProvider(characterProvider, { this@GameSession.world }, roundIntentions)
             val playerInstance = babelFit<PlayerAgentAPI> {
                 adapter(apiAdapter)
                 addInterceptor(WorldStateInterceptor(isDm = false) { this@GameSession.world })

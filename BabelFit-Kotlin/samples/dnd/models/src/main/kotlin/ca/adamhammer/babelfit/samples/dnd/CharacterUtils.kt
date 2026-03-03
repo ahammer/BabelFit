@@ -4,6 +4,7 @@ import ca.adamhammer.babelfit.samples.dnd.model.AbilityScores
 import ca.adamhammer.babelfit.samples.dnd.model.Character
 
 /** D&D stat computation utilities. */
+@Suppress("TooManyFunctions")
 object CharacterUtils {
 
     fun abilityModifier(score: Int): Int = (score - 10) / 2
@@ -152,5 +153,32 @@ object CharacterUtils {
         if (c.backstory.isNotBlank()) {
             appendLine("  Backstory: ${c.backstory.take(120)}${if (c.backstory.length > 120) "..." else ""}")
         }
+    }
+
+    /**
+     * Compute the expected roll modifier for a given character and roll type string.
+     * Returns null if the roll type cannot be mapped to an ability score.
+     */
+    @Suppress("CyclomaticComplexMethod", "MaxLineLength")
+    fun expectedRollModifier(character: Character, rollType: String): Int? {
+        val text = rollType.lowercase()
+        val scores = character.abilityScores
+        val abilityMod = when {
+            "strength" in text || "athletics" in text -> abilityModifier(scores.str)
+            "dexterity" in text || "stealth" in text || "acrobatics" in text || "sleight" in text -> abilityModifier(scores.dex)
+            "constitution" in text -> abilityModifier(scores.con)
+            "intelligence" in text || "arcana" in text || "investigation" in text || "history" in text || "nature" in text || "religion" in text -> abilityModifier(scores.int)
+            "wisdom" in text || "perception" in text || "insight" in text || "animal handling" in text || "medicine" in text || "survival" in text -> abilityModifier(scores.wis)
+            "charisma" in text || "deception" in text || "intimidation" in text || "performance" in text || "persuasion" in text -> abilityModifier(scores.cha)
+            else -> return null
+        }
+
+        val proficiency = if (character.skills.any { text.contains(it.lowercase()) }) {
+            character.proficiencyBonus
+        } else {
+            0
+        }
+
+        return abilityMod + proficiency
     }
 }

@@ -379,6 +379,123 @@ object BakedGameData {
                 BakedCharacter("Archon Meren", "Human", "Court Mage (Wizard)", "An aging wizard who serves the throne, not the king. He can detect lies, scry on conspirators, and ward against magical attacks — but his power is fading."),
                 BakedCharacter("Copperjack", "Halfling", "Street Boss (Warlock)", "A crime lord from the city's underbelly who represents the common folk. He has a pact with a shadow entity that grants him leverage over the nobles.")
             )
+        ),
+
+        // ── Mundane & Contemporary ──────────────────────────────────────────
+        BakedGenre(
+            name = "Legal Drama",
+            premise = "A prestigious law firm is rocked by scandal when a senior partner is accused of evidence tampering. The remaining attorneys must navigate a high-profile murder trial while uncovering the truth about their own firm's dark secrets.",
+            characters = listOf(
+                BakedCharacter("Diana Cruz", "Human", "Defense Attorney", "A rising star litigator who never loses — until she discovers her mentor's secret evidence locker. Now she's defending a client she suspects is guilty to expose the real conspiracy."),
+                BakedCharacter("Marcus Webb", "Human", "Prosecutor", "A no-nonsense state attorney with a perfect conviction record. He's under political pressure to win this case but suspects the evidence is tainted."),
+                BakedCharacter("Priya Chakravarti", "Human", "Paralegal", "The firm's most meticulous researcher who stumbles onto buried case files that connect to a decade-old cold case. She's in over her head but too stubborn to stop digging."),
+                BakedCharacter("Judge Eleanor Voss", "Human", "Judge", "A veteran judge known for her sharp wit and zero tolerance for courtroom theatrics. She suspects both sides are hiding something and is determined to see justice done."),
+                BakedCharacter("Tommy Hale", "Human", "Private Investigator", "A disgraced ex-cop turned PI who drinks too much coffee and trusts no one. He digs up the evidence that nobody wants found."),
+                BakedCharacter("Sofia Reyes", "Human", "Court Reporter", "She's transcribed thousands of trials and has a photographic memory. She noticed inconsistencies in witness testimony that nobody else caught."),
+                BakedCharacter("Desmond Park", "Human", "Junior Associate", "Fresh out of law school with $200k in student debt. He's torn between doing the right thing and keeping his job at the only firm that would hire him."),
+                BakedCharacter("Vivian Cross", "Human", "Jury Consultant", "A behavioral psychologist hired to stack the jury. Her methods are ethically gray, but she starts questioning whose side she's really on.")
+            )
+        ),
+        BakedGenre(
+            name = "Office Drama",
+            premise = "Nexus Corp, a mid-size tech company, is undergoing a hostile acquisition. As layoffs loom and alliances shift, employees at every level scheme, bond, and backstab their way through the most consequential quarter in company history.",
+            characters = listOf(
+                BakedCharacter("Greg Holloway", "Human", "Regional Manager", "A middle manager who peaked in 2015 and knows it. He's desperately trying to prove his department's value before the axe falls — mostly through motivational posters and forced team-building."),
+                BakedCharacter("Amara Osei", "Human", "Software Engineer", "A brilliant coder who automates her entire job in secret. She spends most meetings silently judging everyone and plotting her startup exit."),
+                BakedCharacter("Kevin 'KD' Dunbar", "Human", "Sales Rep", "The loudest person in every room. His numbers are suspiciously good and his expense reports are creative fiction, but he's somehow untouchable."),
+                BakedCharacter("Janet Muller", "Human", "HR Director", "She knows every secret in the building and wields that knowledge like a scalpel. Her smile never reaches her eyes and her door is always open — strategically."),
+                BakedCharacter("Raj Patel", "Human", "IT Support", "He controls the servers, the WiFi, and the security cameras. People underestimate him because he's quiet, which is exactly how he likes it."),
+                BakedCharacter("Lena Park", "Human", "Marketing Lead", "An overachiever whose personal brand is 'effortless excellence.' She runs on spite, iced lattes, and a pathological need to outperform her ex who works two floors up."),
+                BakedCharacter("Dave Kowalski", "Human", "Facilities Manager", "He's been here longer than the building. He knows where the bodies are buried (metaphorically) and which ceiling tiles are loose (literally)."),
+                BakedCharacter("Tanya Briggs", "Human", "CEO's Executive Assistant", "She manages the CEO's calendar, email, and secrets. She has more real power than most VPs and everyone knows it.")
+            )
+        ),
+        BakedGenre(
+            name = "High School Drama",
+            premise = "Westfield High's senior year is derailed when the principal announces the school will close at year's end due to budget cuts. Students, teachers, and staff unite — or clash — in a last-ditch effort to save their school while navigating the chaos of prom, finals, and college applications.",
+            characters = listOf(
+                BakedCharacter("Zoe Hernandez", "Human", "Class President", "An overcommitted perfectionist running the Save Westfield campaign while applying to 14 colleges. She hasn't slept a full night since September."),
+                BakedCharacter("Tyler 'TJ' Jackson", "Human", "Star Quarterback", "The golden boy with a full-ride scholarship on the line. If the school closes, he transfers to a rival — and loses everything he's built."),
+                BakedCharacter("Mika Chen", "Human", "Drama Club President", "A theatrical force of nature who treats every moment like it's a scene from a movie. She's directing the spring musical as the school's swan song."),
+                BakedCharacter("DeShawn Williams", "Human", "AV Club Nerd", "A quiet tech genius who runs the school's podcast and live streams. He accidentally records something he shouldn't have — and now he has leverage."),
+                BakedCharacter("Coach Brennan", "Human", "P.E. Teacher/Coach", "A gruff but caring coach who's been at Westfield for 20 years. He's fighting the closure harder than anyone because this school saved his life once."),
+                BakedCharacter("Ms. Takahashi", "Human", "English Teacher", "An idealistic first-year teacher who thought she could change the world. Instead she's learning that bureaucracy is the real final boss."),
+                BakedCharacter("Brianna Sloane", "Human", "Mean Girl / Influencer", "She has 50K followers and weaponizes them. She's against the closure because it would ruin her senior year aesthetic, but her methods are ruthless."),
+                BakedCharacter("Hector Vargas", "Human", "Janitor", "He's cleaned these halls for 30 years and knows every student by name. He's the emotional heart of the school and the one person everyone trusts.")
+            )
+        ),
+        BakedGenre(
+            name = "Reality TV",
+            premise = "Ten strangers are dropped into a luxury villa for 'Paradise or Perish,' a reality show where alliances are everything. Each week someone is eliminated by group vote, but secret twists — hidden immunity, double eliminations, and surprise returnees — keep everyone on edge.",
+            characters = listOf(
+                BakedCharacter("Chad Decker", "Human", "Fitness Influencer", "A bronzed gym bro who's here for the brand deals. His strategy is 'be everyone's best friend' but he can't help making enemies by being obliviously honest."),
+                BakedCharacter("Naomi St. Claire", "Human", "Aspiring Actress", "She treats every confessional like an audition tape. She's playing a character so hard she's forgotten who she actually is."),
+                BakedCharacter("Big Mike", "Human", "Retired Plumber", "The oldest contestant at 58, he's here because his grandkids dared him. He has zero strategy but an uncanny ability to survive every vote through sheer likability."),
+                BakedCharacter("Destiny Amor", "Human", "Beauty Pageant Queen", "She's competed in pageants since age 5 and can weaponize a smile. Beneath the tiara is a strategic mastermind who's three moves ahead."),
+                BakedCharacter("Kai Nakamura", "Human", "Surf Instructor", "A laid-back dude from Hawaii who genuinely doesn't care about winning. His chill energy makes everyone confide in him, giving him intel he doesn't even want."),
+                BakedCharacter("Veronica 'V' Watts", "Human", "Corporate Lawyer (on leave)", "She negotiates alliances like merger agreements. She's terrifying in strategy sessions and cries on cue when she needs sympathy votes."),
+                BakedCharacter("Travis Moon", "Human", "Country Singer", "He brought a guitar and plays campfire songs every night. He's either a genuine sweetheart or the most manipulative player in the villa — nobody can tell."),
+                BakedCharacter("Producer Jackie", "Human", "Show Producer", "She's not a contestant — she's behind the camera, feeding twists and manipulating storylines. The real puppet master pulling everyone's strings.")
+            )
+        ),
+        BakedGenre(
+            name = "Suburban Mystery",
+            premise = "A seemingly perfect neighborhood is shaken when a beloved HOA president vanishes during the annual block party. As residents investigate, they discover that everyone on Maple Drive has something to hide — and the perfectly manicured lawns conceal secrets darker than anyone imagined.",
+            characters = listOf(
+                BakedCharacter("Karen Whitfield", "Human", "HOA Vice President", "She organized the search party within 20 minutes and already has a suspect board in her kitchen. Her obsessive record-keeping of neighborhood violations might actually solve the case."),
+                BakedCharacter("Doug Whitfield", "Human", "Retired Accountant", "Karen's husband who just wants to grill in peace. He noticed financial irregularities in the HOA books but kept quiet — until now."),
+                BakedCharacter("Elena Vasquez", "Human", "Elementary School Teacher", "The neighborhood's favorite babysitter and cookie baker. She saw something from her kitchen window that night but is terrified to come forward."),
+                BakedCharacter("Ryan Cho", "Human", "Work-from-Home Day Trader", "He watches the street from his home office all day and has security cameras covering every angle. His footage contains clues — and things he'd rather not explain."),
+                BakedCharacter("Officer Linda Marsh", "Human", "Local Police", "The beat cop assigned to the case who grew up on Maple Drive. She knows everyone's history and has her own theory about what happened."),
+                BakedCharacter("Pastor Jim Goodwin", "Human", "Community Pastor", "A trusted counselor who hears confessions from half the neighborhood. He knows critical information but is bound by pastoral confidentiality."),
+                BakedCharacter("Tammy Nguyen", "Human", "Real Estate Agent", "She's trying to sell three houses on the street and a missing person case is terrible for property values. She'll help solve this — for fiscal reasons."),
+                BakedCharacter("Benny Kowalski", "Human", "Teenage Skateboarder", "The 16-year-old who everyone dismisses but who was out skating past midnight and saw things the adults would rather he hadn't.")
+            )
+        ),
+        BakedGenre(
+            name = "Hospital Drama",
+            premise = "Metro General Hospital faces a crisis when a mysterious illness sweeps through the ER, quarantining staff and patients alike. With the hospital on lockdown, a skeleton crew must diagnose the outbreak, treat the critically ill, and navigate the personal dramas that emerge when medical professionals are pushed to their limits.",
+            characters = listOf(
+                BakedCharacter("Dr. Sarah Kim", "Human", "ER Attending", "A brilliant but burned-out emergency physician on her 36th consecutive hour. She's the best diagnostician in the hospital and the worst at taking care of herself."),
+                BakedCharacter("Dr. James Okafor", "Human", "Infectious Disease Specialist", "Called in from his daughter's recital to lead the outbreak response. Methodical, calm, and hiding the fact that he's terrified because this pathogen doesn't match anything in the textbook."),
+                BakedCharacter("Nurse Maria Santos", "Human", "Head ER Nurse", "A 20-year veteran who runs the ER with an iron hand and a warm heart. She's the one everyone turns to when things go sideways, and things have gone very sideways."),
+                BakedCharacter("Dr. Alex Chen", "Human", "Surgical Resident", "A cocky third-year resident who thinks they can handle anything. The quarantine forces them to operate without their attending, and the stakes are life and death."),
+                BakedCharacter("Hospital Administrator Diane Wolfe", "Human", "Hospital CEO", "A former nurse turned executive who's caught between patient safety and the board's demands to keep the crisis quiet. She has a PR nightmare and a genuine humanitarian crisis happening simultaneously."),
+                BakedCharacter("Chaplain Robert Hayes", "Human", "Hospital Chaplain", "A former combat medic turned spiritual counselor. He provides comfort to dying patients and overwhelmed staff while wrestling with his own faith."),
+                BakedCharacter("Patient Zero — Marcus Webb", "Human", "Construction Worker", "The first patient admitted with the mystery symptoms. He's deteriorating fast and the only clues to the outbreak's origin are in his work history and the jobsite he can barely remember."),
+                BakedCharacter("EMT Carla Reeves", "Human", "Paramedic", "She brought Patient Zero in and is now trapped inside the quarantine. She's seen the outside world's response — or lack thereof — and knows help isn't coming fast enough.")
+            )
+        ),
+        BakedGenre(
+            name = "Food Truck Wars",
+            premise = "The annual Riverside Food Festival awards a $100,000 prize and a permanent restaurant lease to the winning food truck. Eight rival trucks compete across five themed rounds of culinary combat while sabotage, secret alliances, and a ruthless food critic threaten to boil over.",
+            characters = listOf(
+                BakedCharacter("Chef Marco Bianchi", "Human", "Italian Fusion Chef", "A classically trained chef who left a Michelin-starred kitchen to follow his dream of perfect street food. He takes every round personally and his temper is as hot as his wood-fired oven."),
+                BakedCharacter("Abuela Rosa Gutierrez", "Human", "Mexican Street Food Legend", "A 70-year-old grandmother whose tamales have a cult following. She's been cooking since she was eight and considers the younger chefs 'adorable but misguided.'"),
+                BakedCharacter("DJ & Layla Park", "Human", "Korean BBQ Duo", "A husband-wife team that argues constantly but produces transcendent food. Their truck runs on love, gochujang, and passive-aggressive efficiency."),
+                BakedCharacter("Zack 'Smoke' Morrison", "Human", "BBQ Pitmaster", "A Texan who speaks in metaphors and tends his smoker like it's a living thing. He considers sauce a sign of weakness and has opinions about wood that border on spiritual."),
+                BakedCharacter("Priya Shah", "Human", "Vegan Innovator", "A biochemist turned chef who creates plant-based dishes that make carnivores question everything. She's competing not just to win but to prove a point."),
+                BakedCharacter("Gus Papadopoulos", "Human", "Greek Comfort Food Guy", "A jovial bear of a man whose gyros have made grown men cry happy tears. He's here for the love of cooking and the prize money to save his mother's restaurant back home."),
+                BakedCharacter("Food Critic Isabelle Fontaine", "Human", "Celebrity Food Critic", "A devastating palate wrapped in Chanel. Her review can make or destroy a career. She's a judge but has her own agenda — she's scouting talent for a TV show."),
+                BakedCharacter("Festival Organizer Pete Chen", "Human", "Event Coordinator", "He's herding eight ego-driven chefs, managing a public health inspection, and desperately trying to keep the festival from descending into chaos. He hasn't eaten all day.")
+            )
+        ),
+        BakedGenre(
+            name = "Local Politics",
+            premise = "The small town of Millfield is thrown into upheaval when a major developer proposes building a mega-mall that would demolish the historic town square. The upcoming mayoral election becomes a battleground between progress and preservation, and every resident has a stake.",
+            characters = listOf(
+                BakedCharacter("Mayor Dolores Finch", "Human", "Incumbent Mayor", "She's held office for 12 years through quiet competence and breakfast fundraisers. The mall deal was supposed to be her legacy project, but public opposition is spiraling."),
+                BakedCharacter("Sam Herrera", "Human", "Challenger / Teacher", "A high school civics teacher running against the mayor on a platform of transparency. He has ideals, a campaign budget of $3,000, and no idea how dirty politics actually gets."),
+                BakedCharacter("Roger Blackwood", "Human", "Real Estate Developer", "The man behind the mega-mall project. He's charming, ruthless, and has donated generously to both candidates. He always gets what he wants — until now."),
+                BakedCharacter("Mrs. Agnes Pratt", "Human", "Historical Society President", "An 82-year-old force of nature who has personally blocked three development projects through sheer stubbornness and encyclopedic knowledge of zoning law."),
+                BakedCharacter("Deputy Mike Torres", "Human", "Sheriff's Deputy", "The only law enforcement in town who isn't on somebody's payroll. He's investigating anonymous threats against both candidates and doesn't like what he's finding."),
+                BakedCharacter("Becky Olsen", "Human", "Local News Reporter", "She runs the Millfield Gazette from her garage and has been waiting her entire career for a story this big. Her investigation is about to blow the lid off everything."),
+                BakedCharacter("Dale Whitmore", "Human", "Diner Owner", "His diner is ground zero for town gossip and informal deal-making. He's publicly neutral but privately terrified the mall will put him out of business after 40 years."),
+                BakedCharacter("Cassie Huang", "Human", "College Student / Activist", "Home for the summer and radicalized by her first poli-sci class. She's organized protests, a social media campaign, and accidentally started a movement she can't control.")
+            )
         )
     )
+
+    /** All characters across every genre, for cross-genre mixing */
+    val allCharacters: List<BakedCharacter> = genres.flatMap { it.characters }
 }

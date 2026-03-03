@@ -403,7 +403,9 @@ class GeminiAdapter(
         if (toolDefs.isNotEmpty()) {
             val declarations = toolDefs.map { it.toGeminiFunctionDeclaration() }
             builder.tools(listOf(Tool.builder().functionDeclarations(declarations).build()))
-        } else if (resultClass != String::class && resultClass != ImageResult::class) {
+        }
+
+        if (resultClass != String::class && resultClass != ImageResult::class) {
             val schema = resultClass.toJsonSchema()
             val geminiSchema = jsonSchemaToGeminiSchema(schema)
             builder.responseMimeType("application/json")

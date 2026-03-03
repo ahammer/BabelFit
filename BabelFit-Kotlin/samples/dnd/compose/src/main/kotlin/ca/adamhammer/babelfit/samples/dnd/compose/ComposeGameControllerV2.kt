@@ -109,6 +109,52 @@ class ComposeGameControllerV2(private val uiScope: CoroutineScope) : GameEventLi
         )
     }
 
+    /** Pick a random genre for setting but draw each character from a random genre */
+    fun randomizeMixed() {
+        val genre = BakedGameData.genres.random()
+        val pool = BakedGameData.allCharacters.shuffled()
+        val newDrafts = pool.take(setupState.partySize).map { baked ->
+            CharacterDraft(
+                name = baked.name,
+                race = baked.race,
+                characterClass = baked.characterClass,
+                manualBackstory = true,
+                backstory = baked.backstory
+            )
+        }
+        setupState = setupState.copy(
+            genre = genre.name,
+            premise = genre.premise,
+            drafts = newDrafts
+        )
+    }
+
+    /** Re-roll just the setting/premise, keeping current characters */
+    fun randomizeSetting() {
+        val genre = BakedGameData.genres.random()
+        setupState = setupState.copy(
+            genre = genre.name,
+            premise = genre.premise
+        )
+    }
+
+    /** Re-roll a single character slot from the entire character pool */
+    fun randomizeCharacter(index: Int) {
+        val current = setupState.drafts.toMutableList()
+        if (index !in current.indices) return
+        val usedNames = current.mapTo(mutableSetOf()) { it.name }
+        val pick = BakedGameData.allCharacters.filter { it.name !in usedNames }.randomOrNull()
+            ?: BakedGameData.allCharacters.random()
+        current[index] = CharacterDraft(
+            name = pick.name,
+            race = pick.race,
+            characterClass = pick.characterClass,
+            manualBackstory = true,
+            backstory = pick.backstory
+        )
+        setupState = setupState.copy(drafts = current)
+    }
+
     fun startGame() {
         if (isBusy) return
         isBusy = true
@@ -467,6 +513,7 @@ class ComposeGameControllerV2(private val uiScope: CoroutineScope) : GameEventLi
         }
     }
 
+    @Suppress("CyclomaticComplexMethod", "InstanceOfCheckForException")
     fun generateImage(entryId: String) {
         val idx = timelineEntries.indexOfFirst {
             it is TimelineEntry.ImagePromptPreview && it.id == entryId
