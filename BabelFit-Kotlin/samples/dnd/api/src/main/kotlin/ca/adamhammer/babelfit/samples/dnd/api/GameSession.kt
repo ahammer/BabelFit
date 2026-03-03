@@ -23,7 +23,9 @@ import kotlin.concurrent.thread
 import kotlin.random.Random
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 
 @Suppress("LongMethod", "LargeClass", "CyclomaticComplexMethod", "TooManyFunctions", "SwallowedException", "MaxLineLength")
 class GameSession(
@@ -204,6 +206,7 @@ class GameSession(
             )
             markdownTimeline += MarkdownEntry.DmNarration("Round ${world.round} Summary", summary.narrative, "summary")
             listener.onRoundSummary(sceneDescription, world)
+            // Start scene image generation early — only needs narrative, not fully applied world state
             if (enableImages) requestSceneImage()
         }
 
@@ -214,56 +217,72 @@ class GameSession(
         val currentRoundCharacters = world.party.filter { it.hp > 0 }
         roundIntentions.clear()
 
-        // Phase 1: Collect all player intentions in parallel
-        val collectedActions = coroutineScope {
-            currentRoundCharacters.map { character ->
-                async {
-                    val currentStats = world.party.find { it.name == character.name } ?: return@async null
+        // Pipeline: players produce actions as they finish, DM consumes and resolves sequentially
+        val actionChannel = Channel<Pair<String, PlayerAction>>(Channel.UNLIMITED)
+
+        coroutineScope {
+            // Producers: each player agent thinks in parallel, sends result as soon as done
+            val producers = currentRoundCharacters.map { character ->
+                launch {
+                    val currentStats = world.party.find { it.name == character.name } ?: return@launch
                     val playerAction = resolveCharacterAction(currentStats)
                     roundIntentions[currentStats.name] = playerAction
-                    currentStats.name to playerAction
+                    actionChannel.send(currentStats.name to playerAction)
                 }
-            }.awaitAll().filterNotNull()
+            }
+
+            // Consumer: DM resolves actions sequentially as they arrive (preserves world-state awareness)
+            launch {
+                var resolved = 0
+                for ((characterName, playerAction) in actionChannel) {
+                    resolveAndApplyAction(characterName, playerAction)
+                    resolved++
+                    if (resolved >= currentRoundCharacters.size) break
+                }
+            }
+
+            // Close channel when all producers complete
+            producers.forEach { it.join() }
+            actionChannel.close()
         }
+    }
 
-        // Phase 2: Resolve actions sequentially (DM resolves each against world state)
-        for ((characterName, playerAction) in collectedActions) {
-            val currentStats = world.party.find { it.name == characterName } ?: continue
-            if (currentStats.hp <= 0) continue
+    private suspend fun resolveAndApplyAction(characterName: String, playerAction: PlayerAction) {
+        val currentStats = world.party.find { it.name == characterName } ?: return
+        if (currentStats.hp <= 0) return
 
-            val action = playerAction.action.ifBlank { "I hold my position and reassess." }
+        val action = playerAction.action.ifBlank { "I hold my position and reassess." }
 
-            val actionProposals = dm.proposeActionOutcomes(currentStats.name, action).get()
-            val selectedAction = weightedRandomSelect(actionProposals.candidates) { it.engagementScore }
-            dmInstance.memoryStore.put("Last action proposals", selectedAction.toJsonString())
-            val result = selectedAction.toActionResult()
-            val actionSelLog = "Round ${world.round}: \uD83C\uDFAF ${currentStats.name} outcome '${selectedAction.category}' " +
-                "(score: ${selectedAction.engagementScore}/10)"
-            world = world.copy(actionLog = (world.actionLog + actionSelLog).takeLast(40))
-            val finalResult = handleDiceRoll(currentStats, result)
+        val actionProposals = dm.proposeActionOutcomes(currentStats.name, action).get()
+        val selectedAction = weightedRandomSelect(actionProposals.candidates) { it.engagementScore }
+        dmInstance.memoryStore.put("Last action proposals", selectedAction.toJsonString())
+        val result = selectedAction.toActionResult()
+        val actionSelLog = "Round ${world.round}: \uD83C\uDFAF ${currentStats.name} outcome '${selectedAction.category}' " +
+            "(score: ${selectedAction.engagementScore}/10)"
+        world = world.copy(actionLog = (world.actionLog + actionSelLog).takeLast(40))
+        val finalResult = handleDiceRoll(currentStats, result)
 
-            world = applyResult(world, finalResult, currentStats.name)
-            world = applyPlayerStateUpdate(world, currentStats.name, playerAction)
-            checkForDeaths()
+        world = applyResult(world, finalResult, currentStats.name)
+        world = applyPlayerStateUpdate(world, currentStats.name, playerAction)
+        checkForDeaths()
 
-            val logEntry = "Round ${world.round}: ${currentStats.name} — $action → " +
-                (if (finalResult.success) "success" else "failure") + ". DM: ${finalResult.narrative.take(150)}"
+        val logEntry = "Round ${world.round}: ${currentStats.name} — $action → " +
+            (if (finalResult.success) "success" else "failure") + ". DM: ${finalResult.narrative.take(150)}"
 
-            characterPreviousActions.getOrPut(currentStats.name) { mutableListOf() }
-                .apply { add(logEntry); if (size > 5) removeFirst() }
+        characterPreviousActions.getOrPut(currentStats.name) { mutableListOf() }
+            .apply { add(logEntry); if (size > 5) removeFirst() }
 
-            world = world.copy(
-                actionLog = (world.actionLog + logEntry).takeLast(40)
-            )
-            markdownTimeline += MarkdownEntry.CharacterAction(
-                characterName = currentStats.name,
-                action = action,
-                outcome = finalResult.narrative,
-                success = finalResult.success
-            )
-            listener.onActionResult(finalResult, world)
-            if (enableImages) requestActionImage(currentStats.name, action, finalResult.narrative)
-        }
+        world = world.copy(
+            actionLog = (world.actionLog + logEntry).takeLast(40)
+        )
+        markdownTimeline += MarkdownEntry.CharacterAction(
+            characterName = currentStats.name,
+            action = action,
+            outcome = finalResult.narrative,
+            success = finalResult.success
+        )
+        listener.onActionResult(finalResult, world)
+        if (enableImages) requestActionImage(currentStats.name, action, finalResult.narrative)
     }
 
     private suspend fun resolveCharacterAction(character: Character): PlayerAction {
