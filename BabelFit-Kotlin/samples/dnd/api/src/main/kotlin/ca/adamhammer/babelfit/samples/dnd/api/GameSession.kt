@@ -82,8 +82,10 @@ class GameSession(
         markdownTimeline += MarkdownEntry.SystemMessage("Game Started", "${world.party.size} adventurers set out from ${world.location.name}.")
         markdownTimeline += MarkdownEntry.DmNarration("Opening Scene", openingScene.narrative, "scene")
         listener.onSceneDescription(openingScene)
-        requestSceneImage()
-        requestTeamImage()
+        if (enableImages) {
+            requestSceneImage()
+            requestTeamImage()
+        }
 
         runGameLoop()
     }
@@ -196,7 +198,7 @@ class GameSession(
             )
             markdownTimeline += MarkdownEntry.DmNarration("Round ${world.round} Summary", summary.narrative, "summary")
             listener.onRoundSummary(sceneDescription, world)
-            requestSceneImage()
+            if (enableImages) requestSceneImage()
         }
 
         finishGame()
@@ -244,6 +246,7 @@ class GameSession(
                 success = finalResult.success
             )
             listener.onActionResult(finalResult, world)
+            if (enableImages) requestActionImage(currentStats.name, action, finalResult.narrative)
         }
     }
 
@@ -797,6 +800,21 @@ class GameSession(
                     prompt += "\n\nCharacter visual reference: $teamRef"
                 }
                 listener.onImagePromptGenerated(prompt, "scene")
+            } catch (_: Exception) {
+            }
+        }
+        imageWorkers += worker
+    }
+
+    private fun requestActionImage(characterName: String, action: String, outcome: String) {
+        val teamRef = teamImagePrompt
+        val worker = thread(isDaemon = true, name = "action-image-$characterName") {
+            try {
+                var prompt = dm.generateActionImagePrompt(characterName, action, outcome, artStyle).get()
+                if (teamRef.isNotBlank()) {
+                    prompt += "\n\nCharacter visual reference: $teamRef"
+                }
+                listener.onImagePromptGenerated(prompt, "action")
             } catch (_: Exception) {
             }
         }

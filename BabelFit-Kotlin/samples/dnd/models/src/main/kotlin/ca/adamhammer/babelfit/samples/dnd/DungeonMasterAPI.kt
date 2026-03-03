@@ -225,6 +225,34 @@ interface DungeonMasterAPI {
     ): Future<String>
 
     @AiOperation(
+        summary = "Generate Action Image Prompt",
+        description = "Generate a dynamic image prompt capturing a specific character's action moment in the scene. " +
+                "Focus on the character's pose, expression, magical effects, weapon stance, or movement. " +
+                "Include the immediate environment and any reaction from the surroundings. " +
+                "CRITICAL: The prompt MUST be PG-13 and safe for image generation APIs. " +
+                "NEVER use these words or synonyms: blood, gore, wound, cut, slash, stab, kill, dead, death, " +
+                "corpse, skull, severed, impale, bleed, dismember, mutilate, torture, naked, nude. " +
+                "Instead use safe alternatives: energy, impact, clash, fallen, defeated, spectral, shadow, " +
+                "strike, battle-worn, helm, shattered, vanquished, fading. " +
+                "Focus on heroic poses, magical effects, and cinematic framing. " +
+                "Incorporate the requested art style into the prompt."
+    )
+    @AiResponse(
+        description = "A generated image prompt for the character's action",
+        responseClass = String::class
+    )
+    fun generateActionImagePrompt(
+        @AiParameter(description = "The name of the character performing the action")
+        characterName: String,
+        @AiParameter(description = "What the character attempted to do")
+        action: String,
+        @AiParameter(description = "The outcome/narrative result of the action")
+        outcome: String,
+        @AiParameter(description = "The desired art style for the image (e.g., Anime, Cinematic, Dark Fantasy)")
+        artStyle: String
+    ): Future<String>
+
+    @AiOperation(
         summary = "Generate Image",
         description = "Generate an image using the provided prompt."
     )
