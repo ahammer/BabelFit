@@ -62,7 +62,9 @@ data class Character(
     @field:AiSchema(description = "Current emotional state and motivation")
     val emotionalState: String = "focused",
     @field:AiSchema(description = "Personal journal entries authored by this character")
-    val journal: List<String> = emptyList()
+    val journal: List<String> = emptyList(),
+    @field:AiSchema(description = "Cumulative experience points earned")
+    val xp: Int = 0
 )
 
 // ── World Model ─────────────────────────────────────────────────────────────
@@ -71,13 +73,13 @@ data class Character(
 @AiSchema(title = "Location", description = "A location in the game world")
 data class Location(
     @field:AiSchema(description = "The name of this location")
-    val name: String = "The Rusty Tankard Inn",
+    val name: String = "Unknown Location",
     @field:AiSchema(description = "A description of the location")
-    val description: String = "A dimly lit tavern with creaking floorboards and the smell of ale in the air.",
+    val description: String = "The adventure begins here.",
     @field:AiSchema(description = "Available exits and where they lead")
-    val exits: List<String> = listOf("north: Town Square", "upstairs: Guest Rooms"),
+    val exits: List<String> = emptyList(),
     @field:AiSchema(description = "Non-player characters present at this location")
-    val npcs: List<String> = listOf("Barkeep Marta"),
+    val npcs: List<String> = emptyList(),
     @field:AiSchema(description = "Visible or discoverable items at this location")
     val items: List<String> = emptyList()
 )
@@ -217,7 +219,9 @@ data class RoundSummaryResult(
     @field:AiSchema(description = "New quest or objective to add, or empty if none")
     val questUpdate: String = "",
     @field:AiSchema(description = "Effects applied to party members this round (ambient damage, status changes, healing)")
-    val partyEffects: List<PartyEffect> = emptyList()
+    val partyEffects: List<PartyEffect> = emptyList(),
+    @field:AiSchema(description = "Names of characters who should level up this round (for heroic acts or milestones)")
+    val levelUps: List<String> = emptyList()
 )
 
 @Serializable
@@ -246,6 +250,8 @@ data class RoundOutcomeCandidate(
     val questUpdate: String = "",
     @field:AiSchema(description = "Effects applied to party members this round")
     val partyEffects: List<PartyEffect> = emptyList(),
+    @field:AiSchema(description = "Names of characters who should level up this round")
+    val levelUps: List<String> = emptyList(),
     @field:AiSchema(description = "Engagement score 1-10 (10 = most engaging)")
     val engagementScore: Int = 5,
     @field:AiSchema(description = "Category: combat, social, exploration, or dramatic_twist")
@@ -313,6 +319,39 @@ data class ActionOutcomeCandidate(
 data class ActionOutcomeProposals(
     @field:AiSchema(description = "Exactly 4 diverse outcome candidates")
     val candidates: List<ActionOutcomeCandidate> = emptyList()
+)
+
+@Serializable
+@AiSchema(title = "CharacterEpilogue", description = "A character's fate and final status")
+data class CharacterEpilogue(
+    @field:AiSchema(description = "The character's name")
+    val name: String = "",
+    @field:AiSchema(description = "What happened to this character — their fate, final moments, or where they ended up")
+    val fate: String = "",
+    @field:AiSchema(description = "Whether this character survived the adventure")
+    val survived: Boolean = true
+)
+
+@Serializable
+@AiSchema(title = "EpilogueResult", description = "A narrative epilogue wrapping up the adventure")
+data class EpilogueResult(
+    @field:AiSchema(
+        description = "A dramatic 2-4 paragraph narrative epilogue summarizing the entire adventure arc " +
+            "\u2014 key moments, turning points, and how it all ended"
+    )
+    val narrative: String = "",
+    @field:AiSchema(description = "The fate of each party member \u2014 what became of them after the adventure")
+    val characterFates: List<CharacterEpilogue> = emptyList(),
+    @field:AiSchema(
+        description = "The overarching themes of the adventure " +
+            "(e.g. 'sacrifice', 'unlikely alliances', 'the cost of power')"
+    )
+    val themes: List<String> = emptyList(),
+    @field:AiSchema(
+        description = "A short 'where are they now' teaser " +
+            "\u2014 what might come next for the survivors, or the lasting impact on the world"
+    )
+    val epilogueTeaser: String = ""
 )
 
 @Serializable

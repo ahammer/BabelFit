@@ -57,6 +57,10 @@ sealed class TimelineEntry {
         val characterName: String,
         val rollType: String,
         val difficulty: Int,
+        val rollValue: Int? = null,
+        val modifier: Int? = null,
+        val total: Int? = null,
+        val success: Boolean? = null,
         override val timestamp: Long = System.currentTimeMillis()
     ) : TimelineEntry()
 
@@ -65,6 +69,24 @@ sealed class TimelineEntry {
         val from: String,
         val to: String,
         val message: String,
+        override val timestamp: Long = System.currentTimeMillis()
+    ) : TimelineEntry()
+
+    /** Image prompt preview — opt-in image generation */
+    data class ImagePromptPreview(
+        val id: String,
+        val prompt: String,
+        val imageType: String,
+        val generating: Boolean = false,
+        val imageBase64: String? = null,
+        val error: String? = null,
+        override val timestamp: Long = System.currentTimeMillis()
+    ) : TimelineEntry()
+
+    /** Character level-up event */
+    data class LevelUp(
+        val characterName: String,
+        val newLevel: Int,
         override val timestamp: Long = System.currentTimeMillis()
     ) : TimelineEntry()
 

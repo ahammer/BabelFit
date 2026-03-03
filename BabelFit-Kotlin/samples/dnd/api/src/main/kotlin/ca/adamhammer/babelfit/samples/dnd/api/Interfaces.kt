@@ -21,10 +21,23 @@ interface GameEventListener {
     fun onImageGenerated(image: ImageResult) {}
     fun onActionResult(result: ActionResult, world: World)
     fun onDiceRollRequested(character: Character, request: DiceRollRequest) {}
+    fun onDiceRollResult(
+        characterName: String,
+        rollType: String,
+        rollValue: Int,
+        modifier: Int,
+        total: Int,
+        difficulty: Int,
+        success: Boolean
+    ) {}
+    fun onImagePromptGenerated(prompt: String, imageType: String) {}
+    fun onCharacterLevelUp(characterName: String, newLevel: Int) {}
     fun onRoundSummary(summary: SceneDescription, world: World)
     fun onGameOver(world: World)
     fun onEndGameSummaryGenerated(reportPath: String) {}
     fun onCharacterThinking(characterName: String)
     fun onCharacterAction(characterName: String, action: String)
     fun onWhisper(fromCharacter: String, toCharacter: String, message: String) {}
+    fun onCharacterDeath(characterName: String, world: World) {}
+    fun onEpilogueGenerated(epilogue: EpilogueResult) {}
 }

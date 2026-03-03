@@ -40,6 +40,7 @@ private val WhisperColor = Color(0xFF8D6E63)     // Brown for whispers
 private val SystemColor = Color(0xFF90A4AE)      // Light grey for system
 private val FailColor = Color(0xFFEF5350)        // Red for failure
 private val ThinkingColor = Color(0xFF546E7A)    // Dark grey for thinking
+private val LevelUpColor = Color(0xFFFFD54F)     // Gold for level-ups
 
 // ── Dark Theme ──────────────────────────────────────────────────────────────
 
@@ -60,8 +61,7 @@ fun BabelFitDndAppV2() {
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colors.background) {
             when (controller.screen) {
                 AppScreen.SETUP -> SetupScreenV2(controller)
-                AppScreen.PLAYING -> GameTimelineScreen(controller, isPostmortem = false)
-                AppScreen.GAME_OVER -> GameTimelineScreen(controller, isPostmortem = true)
+                AppScreen.PLAYING -> GameTimelineScreen(controller)
             }
         }
     }
@@ -139,13 +139,28 @@ private fun SetupScreenV2(controller: ComposeGameControllerV2) {
                     onSelect = { controller.setupState = controller.setupState.copy(textModel = it) }
                 )
 
+                Spacer(Modifier.height(4.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(
+                        checked = setup.enableImages,
+                        onCheckedChange = { controller.setupState = controller.setupState.copy(enableImages = it) },
+                        colors = CheckboxDefaults.colors(checkedColor = DmColor)
+                    )
+                    Text("Enable Image Generation", color = DimText)
+                }
                 if (setup.enableImages) {
-                    Spacer(Modifier.height(4.dp))
                     Text("Image Generation", style = MaterialTheme.typography.subtitle2, color = DimText)
                     VendorSelector(
                         vendors = Vendor.entries.filter { it.supportsImages },
                         selected = setup.imageVendor,
                         onSelect = { controller.setupState = controller.setupState.copy(imageVendor = it) }
+                    )
+                    OutlinedTextField(
+                        modifier = Modifier.fillMaxWidth(),
+                        value = setup.artStyle,
+                        onValueChange = { controller.setupState = controller.setupState.copy(artStyle = it) },
+                        label = { Text("Art Style") },
+                        colors = darkTextFieldColors()
                     )
                 }
             }
@@ -169,23 +184,7 @@ private fun SetupScreenV2(controller: ComposeGameControllerV2) {
                     valueRange = 3f..100f, steps = 96,
                     colors = SliderDefaults.colors(thumbColor = DmColor, activeTrackColor = DmColor)
                 )
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(
-                        checked = setup.enableImages,
-                        onCheckedChange = { controller.setupState = controller.setupState.copy(enableImages = it) },
-                        colors = CheckboxDefaults.colors(checkedColor = DmColor)
-                    )
-                    Text("Enable Images", color = DimText)
-                }
-                if (setup.enableImages) {
-                    OutlinedTextField(
-                        modifier = Modifier.fillMaxWidth(),
-                        value = setup.artStyle,
-                        onValueChange = { controller.setupState = controller.setupState.copy(artStyle = it) },
-                        label = { Text("Art Style") },
-                        colors = darkTextFieldColors()
-                    )
-                }
+
             }
         }
 
@@ -257,26 +256,22 @@ private fun SetupScreenV2(controller: ComposeGameControllerV2) {
     }
 }
 
-// ── Unified Game Timeline Screen (Playing + Postmortem) ─────────────────────
+// ── Game Timeline Screen ────────────────────────────────────────────────────
 
 @Composable
-private fun GameTimelineScreen(controller: ComposeGameControllerV2, isPostmortem: Boolean) {
+private fun GameTimelineScreen(controller: ComposeGameControllerV2) {
     val timelineState = rememberLazyListState()
 
-    // Auto-scroll to bottom during live play
-    if (!isPostmortem) {
-        LaunchedEffect(controller.timelineEntries.size) {
-            if (controller.timelineEntries.isNotEmpty()) {
-                timelineState.animateScrollToItem(controller.timelineEntries.lastIndex)
-            }
+    // Auto-scroll to bottom
+    LaunchedEffect(controller.timelineEntries.size, controller.gameFinished) {
+        if (controller.timelineEntries.isNotEmpty()) {
+            timelineState.animateScrollToItem(controller.timelineEntries.lastIndex)
         }
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // Sticky header bar
-        StickyHeaderBar(controller, isPostmortem)
+        StickyHeaderBar(controller)
 
-        // Timeline + floating usage pane overlay
         Box(modifier = Modifier.fillMaxSize()) {
             LazyColumn(
                 state = timelineState,
@@ -284,29 +279,15 @@ private fun GameTimelineScreen(controller: ComposeGameControllerV2, isPostmortem
                 verticalArrangement = Arrangement.spacedBy(4.dp),
                 contentPadding = PaddingValues(vertical = 12.dp)
             ) {
-                if (isPostmortem) {
-                    item { PostmortemBanner(controller) }
-                    item { Spacer(Modifier.height(8.dp)) }
-                }
-
                 items(controller.timelineEntries, key = { it.timestamp }) { entry ->
-                    TimelineEntryCard(entry)
+                    TimelineEntryCard(entry, controller)
                 }
 
-                if (isPostmortem) {
-                    item { Spacer(Modifier.height(12.dp)) }
-                    item {
-                        Button(
-                            onClick = { controller.backToSetup() },
-                            modifier = Modifier.fillMaxWidth().height(48.dp),
-                            colors = ButtonDefaults.buttonColors(backgroundColor = DmColor)
-                        ) { Text("← Back to Setup", color = Color.White) }
-                    }
-                    item { Spacer(Modifier.height(16.dp)) }
+                if (controller.gameFinished) {
+                    item { FinBanner(onBackToSetup = { controller.backToSetup() }) }
                 }
             }
 
-            // Floating usage pane
             if (controller.showUsagePane) {
                 UsagePane(
                     tracker = controller.usageTracker,
@@ -318,7 +299,7 @@ private fun GameTimelineScreen(controller: ComposeGameControllerV2, isPostmortem
 }
 
 @Composable
-private fun StickyHeaderBar(controller: ComposeGameControllerV2, isPostmortem: Boolean) {
+private fun StickyHeaderBar(controller: ComposeGameControllerV2) {
     Surface(
         color = DarkCardAlt,
         elevation = 4.dp,
@@ -330,14 +311,10 @@ private fun StickyHeaderBar(controller: ComposeGameControllerV2, isPostmortem: B
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                if (isPostmortem) {
-                    Text("⚰ Game Over", style = MaterialTheme.typography.h6, color = ErrorColor)
-                } else {
-                    Text(
-                        "Round ${controller.currentRound}",
-                        style = MaterialTheme.typography.h6, color = DmColor
-                    )
-                }
+                Text(
+                    "Round ${controller.currentRound}",
+                    style = MaterialTheme.typography.h6, color = DmColor
+                )
                 Text("•", color = DimText)
                 Text(controller.world.location.name, style = MaterialTheme.typography.subtitle1, color = BrightText)
 
@@ -361,7 +338,7 @@ private fun StickyHeaderBar(controller: ComposeGameControllerV2, isPostmortem: B
                     Text("💰", fontSize = 14.sp)
                 }
 
-                if (!isPostmortem && controller.isBusy) {
+                if (controller.isBusy) {
                     CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = DmColor)
                     Spacer(Modifier.width(6.dp))
                     controller.activeTurnCharacterName?.let {
@@ -381,7 +358,7 @@ private fun StickyHeaderBar(controller: ComposeGameControllerV2, isPostmortem: B
                             modifier = Modifier.size(8.dp).clip(CircleShape).background(color)
                         )
                         Text(
-                            "${c.name} ${c.hp}/${c.maxHp}",
+                            "${c.name} Lv${c.level} ${c.hp}/${c.maxHp}",
                             style = MaterialTheme.typography.caption,
                             color = when {
                                 hpRatio > 0.5f -> SuccessColor
@@ -397,64 +374,32 @@ private fun StickyHeaderBar(controller: ComposeGameControllerV2, isPostmortem: B
 }
 
 @Composable
-private fun PostmortemBanner(controller: ComposeGameControllerV2) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        backgroundColor = DarkCardAlt,
-        shape = RoundedCornerShape(12.dp)
+private fun FinBanner(onBackToSetup: () -> Unit) {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Adventure Complete", style = MaterialTheme.typography.h5, color = DmColor)
-            Text(
-                "The full story of your party's journey, from beginning to end.",
-                style = MaterialTheme.typography.body2, color = DimText
-            )
-            Divider(color = DimText.copy(alpha = 0.2f), thickness = 1.dp)
-            Text("Final Party Status", style = MaterialTheme.typography.subtitle1, color = BrightText)
-            controller.world.party.forEach { c ->
-                val color = AvatarColors.colorFor(c.name)
-                val hpRatio = if (c.maxHp == 0) 0f else c.hp.toFloat() / c.maxHp
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.padding(vertical = 2.dp)
-                ) {
-                    AvatarCircle(c.name, color, size = 28)
-                    Column {
-                        Text(
-                            "${c.name} — ${c.race} ${c.characterClass}",
-                            style = MaterialTheme.typography.body2, color = BrightText
-                        )
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text(
-                                "HP ${c.hp}/${c.maxHp}",
-                                style = MaterialTheme.typography.caption,
-                                color = when {
-                                    hpRatio > 0.5f -> SuccessColor
-                                    hpRatio > 0.2f -> DiceColor
-                                    else -> FailColor
-                                }
-                            )
-                            Text("· ${c.status}", style = MaterialTheme.typography.caption, color = DimText)
-                        }
-                    }
-                }
-            }
-            if (controller.world.questLog.isNotEmpty()) {
-                Spacer(Modifier.height(4.dp))
-                Text("Quests", style = MaterialTheme.typography.subtitle2, color = DimText)
-                controller.world.questLog.forEach { q ->
-                    Text("• $q", style = MaterialTheme.typography.caption, color = DimText)
-                }
-            }
-        }
+        Divider(color = DmColor.copy(alpha = 0.4f))
+        Text(
+            "— Fin —",
+            style = MaterialTheme.typography.h5,
+            color = DmColor,
+            fontStyle = FontStyle.Italic
+        )
+        Divider(color = DmColor.copy(alpha = 0.4f))
+        Button(
+            onClick = onBackToSetup,
+            modifier = Modifier.fillMaxWidth().height(48.dp),
+            colors = ButtonDefaults.buttonColors(backgroundColor = DmColor)
+        ) { Text("← Back to Setup", color = Color.White) }
     }
 }
 
 // ── Timeline Entry Cards ────────────────────────────────────────────────────
 
 @Composable
-private fun TimelineEntryCard(entry: TimelineEntry) {
+private fun TimelineEntryCard(entry: TimelineEntry, controller: ComposeGameControllerV2) {
     when (entry) {
         is TimelineEntry.RoundHeader -> RoundHeaderCard(entry)
         is TimelineEntry.DmNarration -> DmNarrationCard(entry)
@@ -464,6 +409,8 @@ private fun TimelineEntryCard(entry: TimelineEntry) {
         is TimelineEntry.DiceRoll -> DiceRollCard(entry)
         is TimelineEntry.Whisper -> WhisperCard(entry)
         is TimelineEntry.SystemMessage -> SystemMessageCard(entry)
+        is TimelineEntry.ImagePromptPreview -> ImagePromptPreviewCard(entry, controller)
+        is TimelineEntry.LevelUp -> LevelUpCard(entry)
     }
 }
 
@@ -635,7 +582,12 @@ private fun CharacterThinkingCard(entry: TimelineEntry.CharacterThinking) {
 
 @Composable
 private fun DiceRollCard(entry: TimelineEntry.DiceRoll) {
-    val color = AvatarColors.colorFor(entry.characterName)
+    val hasResult = entry.rollValue != null
+    val resultColor = when (entry.success) {
+        true -> SuccessColor
+        false -> FailColor
+        null -> DiceColor
+    }
 
     Row(
         modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
@@ -653,12 +605,36 @@ private fun DiceRollCard(entry: TimelineEntry.DiceRoll) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text("🎲", fontSize = 16.sp)
-                Text(
-                    "${entry.characterName} — ${entry.rollType} vs DC ${entry.difficulty}",
-                    style = MaterialTheme.typography.caption,
-                    color = DiceColor,
-                    modifier = Modifier.weight(1f)
-                )
+                if (hasResult) {
+                    val nat20 = entry.rollValue == 20
+                    val nat1 = entry.rollValue == 1
+                    val flair = when {
+                        nat20 -> " ✨NAT 20!✨"
+                        nat1 -> " 💥NAT 1!"
+                        else -> ""
+                    }
+                    val successLabel = when (entry.success) {
+                        true -> "SUCCESS"
+                        false -> "FAIL"
+                        null -> "?"
+                    }
+                    Text(
+                        "${entry.characterName} — ${entry.rollType}: " +
+                            "d20(${entry.rollValue}) +${entry.modifier} = ${entry.total} " +
+                            "vs DC ${entry.difficulty} → $successLabel$flair",
+                        style = MaterialTheme.typography.caption,
+                        color = resultColor,
+                        fontWeight = if (nat20 || nat1) FontWeight.Bold else FontWeight.Normal,
+                        modifier = Modifier.weight(1f)
+                    )
+                } else {
+                    Text(
+                        "${entry.characterName} — ${entry.rollType} vs DC ${entry.difficulty}",
+                        style = MaterialTheme.typography.caption,
+                        color = DiceColor,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
             }
         }
     }
@@ -709,6 +685,115 @@ private fun SystemMessageCard(entry: TimelineEntry.SystemMessage) {
                 style = MaterialTheme.typography.caption,
                 color = if (entry.isError) ErrorColor.copy(alpha = 0.8f) else DimText
             )
+        }
+    }
+}
+
+@Composable
+private fun ImagePromptPreviewCard(entry: TimelineEntry.ImagePromptPreview, controller: ComposeGameControllerV2) {
+    ColorBorderCard(DmColor, alpha = 0.08f) {
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(
+                "\uD83C\uDFA8 Image Prompt (${entry.imageType})",
+                style = MaterialTheme.typography.subtitle2,
+                color = DmColor
+            )
+            Text(
+                entry.prompt,
+                style = MaterialTheme.typography.caption,
+                fontStyle = FontStyle.Italic,
+                color = DimText
+            )
+            when {
+                entry.imageBase64 != null -> {
+                    val bitmap = remember(entry.imageBase64) { decodeBase64(entry.imageBase64) }
+                    if (bitmap != null) {
+                        Image(
+                            bitmap = bitmap,
+                            contentDescription = entry.prompt,
+                            contentScale = ContentScale.FillWidth,
+                            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp))
+                        )
+                    }
+                }
+                entry.error != null -> {
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(
+                            "\u26A0\uFE0F Image generation failed",
+                            style = MaterialTheme.typography.subtitle2,
+                            color = FailColor
+                        )
+                        Text(
+                            entry.error,
+                            style = MaterialTheme.typography.caption,
+                            color = FailColor.copy(alpha = 0.8f)
+                        )
+                        Button(
+                            onClick = { controller.generateImage(entry.id) },
+                            colors = ButtonDefaults.buttonColors(backgroundColor = FailColor)
+                        ) {
+                            Text("\uD83D\uDD04 Retry", fontSize = 12.sp, color = Color.White)
+                        }
+                    }
+                }
+                entry.generating -> {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().aspectRatio(1f)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color.White.copy(alpha = 0.05f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(32.dp),
+                                strokeWidth = 2.dp,
+                                color = DmColor
+                            )
+                            Text("Generating...", style = MaterialTheme.typography.caption, color = DimText)
+                        }
+                    }
+                }
+                else -> {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().aspectRatio(1f)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color.White.copy(alpha = 0.05f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Button(
+                            onClick = { controller.generateImage(entry.id) },
+                            colors = ButtonDefaults.buttonColors(backgroundColor = DmColor)
+                        ) {
+                            Text("\uD83C\uDFA8 Generate Image", fontSize = 12.sp, color = Color.White)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LevelUpCard(entry: TimelineEntry.LevelUp) {
+    ColorBorderCard(LevelUpColor, alpha = 0.12f) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("\u2B06\uFE0F", fontSize = 20.sp)
+            Column {
+                Text(
+                    "${entry.characterName} leveled up!",
+                    style = MaterialTheme.typography.subtitle2,
+                    fontWeight = FontWeight.Bold,
+                    color = LevelUpColor
+                )
+                Text(
+                    "Now Level ${entry.newLevel}",
+                    style = MaterialTheme.typography.caption,
+                    color = LevelUpColor.copy(alpha = 0.8f)
+                )
+            }
         }
     }
 }

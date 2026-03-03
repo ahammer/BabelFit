@@ -5,8 +5,7 @@ typealias Vendor = ca.adamhammer.babelfit.samples.common.Vendor
 
 enum class AppScreen {
     SETUP,
-    PLAYING,
-    GAME_OVER
+    PLAYING
 }
 
 data class CharacterDraft(
@@ -22,7 +21,7 @@ data class SetupState(
     val premise: String = "",
     val partySize: Int = 2,
     val maxRounds: Int = 3,
-    val enableImages: Boolean = true,
+    val enableImages: Boolean = false,
     val artStyle: String = "Anime",
     val textVendor: Vendor = Vendor.OPENAI,
     val textModel: String = Vendor.OPENAI.defaultModel,

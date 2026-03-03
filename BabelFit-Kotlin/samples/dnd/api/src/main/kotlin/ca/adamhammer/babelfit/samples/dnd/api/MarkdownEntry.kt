@@ -1,6 +1,7 @@
 package ca.adamhammer.babelfit.samples.dnd.api
 
 import ca.adamhammer.babelfit.model.ImageResult
+import ca.adamhammer.babelfit.samples.dnd.model.CharacterEpilogue
 
 /**
  * Lightweight timeline entries captured during a game session,
@@ -24,4 +25,10 @@ sealed class MarkdownEntry {
     data class Whisper(val from: String, val to: String, val message: String) : MarkdownEntry()
     data class SystemMessage(val title: String, val details: String) : MarkdownEntry()
     data class WorldBuildStep(val step: String, val details: String) : MarkdownEntry()
+    data class Epilogue(
+        val narrative: String,
+        val characterFates: List<CharacterEpilogue>,
+        val themes: List<String>,
+        val epilogueTeaser: String
+    ) : MarkdownEntry()
 }

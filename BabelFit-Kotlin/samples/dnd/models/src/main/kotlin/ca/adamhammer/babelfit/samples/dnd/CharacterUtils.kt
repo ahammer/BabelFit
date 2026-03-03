@@ -8,6 +8,14 @@ object CharacterUtils {
 
     fun abilityModifier(score: Int): Int = (score - 10) / 2
 
+    /** Hit die size for a character class. */
+    fun hitDieForClass(characterClass: String): Int = when (characterClass.lowercase()) {
+        "barbarian" -> 12
+        "fighter", "paladin", "ranger" -> 10
+        "wizard", "sorcerer" -> 6
+        else -> 8
+    }
+
     /** Standard array for ability score assignment. */
     val standardArray = listOf(15, 14, 13, 12, 10, 8)
 
@@ -15,13 +23,7 @@ object CharacterUtils {
     val abilityNames = listOf("STR", "DEX", "CON", "INT", "WIS", "CHA")
 
     fun startingHp(characterClass: String, conModifier: Int): Int {
-        val hitDie = when (characterClass.lowercase()) {
-            "fighter" -> 10
-            "wizard" -> 6
-            "rogue" -> 8
-            "cleric" -> 8
-            else -> 8
-        }
+        val hitDie = hitDieForClass(characterClass)
         return (hitDie + conModifier).coerceAtLeast(1)
     }
 

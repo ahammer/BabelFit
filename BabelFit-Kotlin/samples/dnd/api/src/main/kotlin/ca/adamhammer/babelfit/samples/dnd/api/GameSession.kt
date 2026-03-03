@@ -49,6 +49,8 @@ class GameSession(
     private val characterPreviousActions: MutableMap<String, MutableList<String>> = mutableMapOf()
     private val markdownTimeline: MutableList<MarkdownEntry> = Collections.synchronizedList(mutableListOf())
     private val imageWorkers: MutableList<Thread> = Collections.synchronizedList(mutableListOf())
+    private val deadCharacters: MutableList<Character> = mutableListOf()
+    private var teamImagePrompt: String = ""
     private var openingScene: SceneDescription = SceneDescription()
 
     suspend fun startGame(initialWorld: World) {
@@ -81,6 +83,7 @@ class GameSession(
         markdownTimeline += MarkdownEntry.DmNarration("Opening Scene", openingScene.narrative, "scene")
         listener.onSceneDescription(openingScene)
         requestSceneImage()
+        requestTeamImage()
 
         runGameLoop()
     }
@@ -164,7 +167,7 @@ class GameSession(
     }
 
     private suspend fun runGameLoop() {
-        while (world.party.any { it.hp > 0 } && world.round < maxTurnsConfigured) {
+        while (world.party.isNotEmpty() && world.round < maxTurnsConfigured) {
             world = world.copy(
                 round = world.round + 1,
                 turnsAtCurrentLocation = world.turnsAtCurrentLocation + 1
@@ -174,7 +177,7 @@ class GameSession(
 
             processRound()
 
-            if (world.party.all { it.hp <= 0 }) {
+            if (world.party.isEmpty()) {
                 finishGame()
                 return
             }
@@ -186,6 +189,7 @@ class GameSession(
                 "(score: ${selected.engagementScore}/10)"
             world = world.copy(actionLog = (world.actionLog + selectionLog).takeLast(40))
             world = applyRoundSummary(world, summary)
+            checkForDeaths()
             val sceneDescription = SceneDescription(
                 narrative = summary.narrative,
                 availableActions = summary.availableActions
@@ -222,6 +226,7 @@ class GameSession(
 
             world = applyResult(world, finalResult, currentStats.name)
             world = applyPlayerStateUpdate(world, currentStats.name, playerAction)
+            checkForDeaths()
             
             val logEntry = "Round ${world.round}: ${currentStats.name} — $action → " +
                 (if (finalResult.success) "success" else "failure") + ". DM: ${finalResult.narrative.take(150)}"
@@ -349,6 +354,22 @@ class GameSession(
         return playerAction
     }
 
+    private fun handleCharacterDeath(character: Character) {
+        world = world.copy(party = world.party.filter { it.name != character.name })
+        deadCharacters += character
+        val deathLog = "Round ${world.round}: \u2620\uFE0F ${character.name} has fallen!"
+        world = world.copy(actionLog = (world.actionLog + deathLog).takeLast(40))
+        markdownTimeline += MarkdownEntry.SystemMessage("Character Death", "\u2620\uFE0F ${character.name} has fallen!")
+        listener.onCharacterDeath(character.name, world)
+    }
+
+    private fun checkForDeaths() {
+        val fallen = world.party.filter { it.hp <= 0 }
+        for (character in fallen) {
+            handleCharacterDeath(character)
+        }
+    }
+
     private fun summarizeStepValue(value: Any?): String {
         val raw = when (value) {
             is PlayerAction -> {
@@ -372,6 +393,16 @@ class GameSession(
 
         val total = diceValue + normalizedModifier
         val success = total >= roll.difficulty
+
+        listener.onDiceRollResult(
+            characterName = character.name,
+            rollType = roll.rollType,
+            rollValue = diceValue,
+            modifier = normalizedModifier,
+            total = total,
+            difficulty = roll.difficulty,
+            success = success
+        )
 
         val modSign = if (normalizedModifier >= 0) "+" else ""
         val rollLog = "Round ${world.round}: \uD83C\uDFB2 ${character.name} ${roll.rollType}: " +
@@ -535,9 +566,25 @@ class GameSession(
             actingCharacterName
         }
 
-        val newParty = world.party.map { c ->
+        // Check for resurrection: if target is dead and receiving healing
+        val resurrectedCharacter = if (result.hpChange > 0) {
+            deadCharacters.find { it.name.equals(targetName, ignoreCase = true) }
+        } else null
+
+        val activeParty = if (resurrectedCharacter != null) {
+            deadCharacters.removeAll { it.name.equals(targetName, ignoreCase = true) }
+            val restoredHp = result.hpChange.coerceIn(1, resurrectedCharacter.maxHp)
+            val restored = resurrectedCharacter.copy(hp = restoredHp, status = "Resurrected")
+            markdownTimeline += MarkdownEntry.SystemMessage("Resurrection", "\u2728 ${restored.name} has been brought back!")
+            val resLog = "Round ${world.round}: \u2728 ${restored.name} has been resurrected!"
+            world.party + restored to (world.actionLog + resLog).takeLast(40)
+        } else {
+            world.party to world.actionLog
+        }
+
+        val newParty = activeParty.first.map { c ->
             if (c.name.equals(targetName, ignoreCase = true)) {
-                val newHp = (c.hp + result.hpChange)
+                val newHp = (c.hp + (if (resurrectedCharacter != null) 0 else result.hpChange))
                     .coerceIn(0, c.maxHp)
                 val newInv = (c.inventory + result.itemsGained) -
                     result.itemsLost.toSet()
@@ -582,7 +629,8 @@ class GameSession(
             location = newLocation,
             lore = world.lore.copy(npcs = updatedLoreNpcs),
             questLog = newQuestLog,
-            turnsAtCurrentLocation = if (locationChanged) 0 else world.turnsAtCurrentLocation
+            turnsAtCurrentLocation = if (locationChanged) 0 else world.turnsAtCurrentLocation,
+            actionLog = activeParty.second
         )
     }
 
@@ -654,6 +702,30 @@ class GameSession(
             w = w.copy(actionLog = (w.actionLog + narrativeLog).takeLast(40))
         }
 
+        // Apply level-ups
+        if (summary.levelUps.isNotEmpty()) {
+            val leveledParty = w.party.map { c ->
+                if (summary.levelUps.any { it.equals(c.name, ignoreCase = true) }) {
+                    val newLevel = c.level + 1
+                    val conMod = CharacterUtils.abilityModifier(c.abilityScores.con)
+                    val hitDie = CharacterUtils.hitDieForClass(c.characterClass)
+                    val hpGain = (hitDie / 2 + 1 + conMod).coerceAtLeast(1)
+                    val newMaxHp = c.maxHp + hpGain
+                    val newProficiency = 2 + (newLevel - 1) / 4
+                    val levelLog = "Round ${w.round}: \u2B06\uFE0F ${c.name} leveled up to Level $newLevel!"
+                    w = w.copy(actionLog = (w.actionLog + levelLog).takeLast(40))
+                    listener.onCharacterLevelUp(c.name, newLevel)
+                    c.copy(
+                        level = newLevel,
+                        maxHp = newMaxHp,
+                        hp = newMaxHp,
+                        proficiencyBonus = newProficiency
+                    )
+                } else c
+            }
+            w = w.copy(party = leveledParty)
+        }
+
         return w
     }
 
@@ -680,7 +752,8 @@ class GameSession(
         newNpcs = newNpcs,
         newNpcProfiles = newNpcProfiles,
         questUpdate = questUpdate,
-        partyEffects = partyEffects
+        partyEffects = partyEffects,
+        levelUps = levelUps
     )
 
     private fun ActionOutcomeCandidate.toActionResult() = ActionResult(
@@ -716,23 +789,44 @@ class GameSession(
     }
 
     private fun requestSceneImage() {
-        if (!enableImages) return
-        
+        val teamRef = teamImagePrompt
         val worker = thread(isDaemon = true, name = "scene-image-generator") {
             try {
-                val prompt = dm.generateSceneImagePrompt(artStyle).get()
-                val image = dm.generateImage(prompt).get()
-                if (image.base64.isNotBlank()) {
-                    markdownTimeline += MarkdownEntry.SceneImage(image)
+                var prompt = dm.generateSceneImagePrompt(artStyle).get()
+                if (teamRef.isNotBlank()) {
+                    prompt += "\n\nCharacter visual reference: $teamRef"
                 }
-                listener.onImageGenerated(image)
+                listener.onImagePromptGenerated(prompt, "scene")
             } catch (_: Exception) {
             }
         }
         imageWorkers += worker
     }
 
+    private fun requestTeamImage() {
+        val worker = thread(isDaemon = true, name = "team-image-generator") {
+            try {
+                val prompt = dm.generateTeamPortraitPrompt(artStyle).get()
+                teamImagePrompt = prompt
+                kotlinx.coroutines.runBlocking { dmInstance.memoryStore.put("Team visual reference", prompt) }
+                listener.onImagePromptGenerated(prompt, "team-portrait")
+            } catch (_: Exception) {
+            }
+        }
+        imageWorkers += worker
+    }
+
+    fun generateImageFromPrompt(prompt: String) {
+        val image = dm.generateImage(prompt).get()
+        if (image.base64.isNotBlank()) {
+            markdownTimeline += MarkdownEntry.SceneImage(image)
+        }
+        listener.onImageGenerated(image)
+    }
+
     private fun finishGame() {
+        generateEpilogue()
+
         val reportPath = runCatching {
             waitForImageWorkers()
             writeEndGameSummaryMarkdown()
@@ -741,6 +835,24 @@ class GameSession(
         listener.onGameOver(world)
         if (!reportPath.isNullOrBlank()) {
             listener.onEndGameSummaryGenerated(reportPath)
+        }
+    }
+
+    private fun generateEpilogue() {
+        try {
+            val epilogue = dm.generateEpilogue().get()
+            markdownTimeline += MarkdownEntry.Epilogue(
+                narrative = epilogue.narrative,
+                characterFates = epilogue.characterFates,
+                themes = epilogue.themes,
+                epilogueTeaser = epilogue.epilogueTeaser
+            )
+            listener.onEpilogueGenerated(epilogue)
+        } catch (_: Exception) {
+            markdownTimeline += MarkdownEntry.SystemMessage(
+                "Epilogue",
+                "The tale of these adventurers fades into legend..."
+            )
         }
     }
 
@@ -777,8 +889,10 @@ class GameSession(
         md.appendLine("## The Party")
         md.appendLine()
         for (c in world.party) {
-            val status = if (c.hp <= 0) "DEAD" else "${c.hp}/${c.maxHp} HP"
-            md.appendLine("- **${c.name}** — ${c.race} ${c.characterClass} (Lvl ${c.level}) — $status")
+            md.appendLine("- **${c.name}** \u2014 ${c.race} ${c.characterClass} (Lvl ${c.level}) \u2014 ${c.hp}/${c.maxHp} HP")
+        }
+        for (c in deadCharacters) {
+            md.appendLine("- **${c.name}** \u2014 ${c.race} ${c.characterClass} (Lvl ${c.level}) \u2014 \u2620\uFE0F DEAD")
         }
         md.appendLine()
 
@@ -855,6 +969,9 @@ class GameSession(
                     md.appendLine("**\u2139\uFE0F ${entry.title}:** ${toInline(entry.details)}")
                     md.appendLine()
                 }
+                is MarkdownEntry.Epilogue -> {
+                    renderEpilogue(md, entry)
+                }
                 is MarkdownEntry.WorldBuildStep -> {
                     // Already rendered in the World Building section above
                 }
@@ -871,8 +988,10 @@ class GameSession(
         md.appendLine("- **Quests:** ${world.questLog.joinToString("; ").ifBlank { "None" }}")
         md.appendLine()
         for (c in world.party) {
-            val status = if (c.hp <= 0) "\u2620\uFE0F DEAD" else "\u2764\uFE0F ${c.hp}/${c.maxHp}"
-            md.appendLine("- **${c.name}** ($status) \u2014 ${c.status}")
+            md.appendLine("- **${c.name}** (\u2764\uFE0F ${c.hp}/${c.maxHp}) \u2014 ${c.status}")
+        }
+        for (c in deadCharacters) {
+            md.appendLine("- **${c.name}** (\u2620\uFE0F DEAD) \u2014 Fallen in battle")
         }
         md.appendLine()
 
@@ -881,4 +1000,32 @@ class GameSession(
     }
 
     private fun toInline(text: String): String = text.replace("\n", " ").trim()
+
+    private fun renderEpilogue(md: StringBuilder, entry: MarkdownEntry.Epilogue) {
+        md.appendLine("---")
+        md.appendLine()
+        md.appendLine("## Epilogue")
+        md.appendLine()
+        md.appendLine(entry.narrative.trim())
+        md.appendLine()
+        if (entry.characterFates.isNotEmpty()) {
+            md.appendLine("### Character Fates")
+            md.appendLine()
+            for (fate in entry.characterFates) {
+                val icon = if (fate.survived) "\u2764\uFE0F" else "\u2620\uFE0F"
+                md.appendLine("- $icon **${fate.name}** \u2014 ${fate.fate}")
+            }
+            md.appendLine()
+        }
+        if (entry.themes.isNotEmpty()) {
+            md.appendLine("*Themes: ${entry.themes.joinToString(", ")}*")
+            md.appendLine()
+        }
+        if (entry.epilogueTeaser.isNotBlank()) {
+            md.appendLine("### What Comes Next...")
+            md.appendLine()
+            md.appendLine("*${entry.epilogueTeaser.trim()}*")
+            md.appendLine()
+        }
+    }
 }

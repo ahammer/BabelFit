@@ -25,6 +25,7 @@ import com.openai.models.ChatModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import java.util.UUID
 
 class ComposeGameControllerV2(private val uiScope: CoroutineScope) : GameEventListener {
 
@@ -48,6 +49,9 @@ class ComposeGameControllerV2(private val uiScope: CoroutineScope) : GameEventLi
     var activeTurnCharacterName by mutableStateOf<String?>(null)
         private set
 
+    var gameFinished by mutableStateOf(false)
+        private set
+
     val timelineEntries = mutableStateListOf<TimelineEntry>()
 
     val usageTracker = UsageTracker()
@@ -56,6 +60,8 @@ class ComposeGameControllerV2(private val uiScope: CoroutineScope) : GameEventLi
 
     var traceSession by mutableStateOf<TraceSession?>(null)
         private set
+
+    private var gameSession: GameSession? = null
 
     // Track pending action per character so we can merge action + outcome
     private val pendingActions = mutableMapOf<String, TimelineEntry.CharacterAction>()
@@ -148,6 +154,7 @@ class ComposeGameControllerV2(private val uiScope: CoroutineScope) : GameEventLi
                     // Pre-register avatar colors for all party members
                     initialWorld.party.forEach { AvatarColors.colorFor(it.name) }
                 }
+                gameSession = session
                 session.startGame(initialWorld)
             } catch (e: Exception) {
                 uiScope.launch {
@@ -170,6 +177,7 @@ class ComposeGameControllerV2(private val uiScope: CoroutineScope) : GameEventLi
     fun backToSetup() {
         activeTurnCharacterName = null
         isBusy = false
+        gameFinished = false
         screen = AppScreen.SETUP
     }
 
@@ -364,14 +372,86 @@ class ComposeGameControllerV2(private val uiScope: CoroutineScope) : GameEventLi
             this@ComposeGameControllerV2.world = world
             isBusy = false
             activeTurnCharacterName = null
+            gameFinished = true
+        }
+    }
+
+    override fun onDiceRollResult(
+        characterName: String,
+        rollType: String,
+        rollValue: Int,
+        modifier: Int,
+        total: Int,
+        difficulty: Int,
+        success: Boolean
+    ) {
+        uiScope.launch {
+            val idx = timelineEntries.indexOfLast {
+                it is TimelineEntry.DiceRoll &&
+                    it.characterName == characterName &&
+                    it.rollType == rollType &&
+                    it.rollValue == null
+            }
+            if (idx >= 0) {
+                val existing = timelineEntries[idx] as TimelineEntry.DiceRoll
+                timelineEntries[idx] = existing.copy(
+                    rollValue = rollValue,
+                    modifier = modifier,
+                    total = total,
+                    success = success
+                )
+            }
+        }
+    }
+
+    override fun onImagePromptGenerated(prompt: String, imageType: String) {
+        uiScope.launch {
             append(
-                TimelineEntry.SystemMessage(
-                    title = "Adventure Ended",
-                    details = "The chapter closes for this party.",
+                TimelineEntry.ImagePromptPreview(
+                    id = UUID.randomUUID().toString(),
+                    prompt = prompt,
+                    imageType = imageType,
                     timestamp = nextTimestamp()
                 )
             )
-            screen = AppScreen.GAME_OVER
+        }
+    }
+
+    override fun onCharacterLevelUp(characterName: String, newLevel: Int) {
+        uiScope.launch {
+            append(
+                TimelineEntry.LevelUp(
+                    characterName = characterName,
+                    newLevel = newLevel,
+                    timestamp = nextTimestamp()
+                )
+            )
+        }
+    }
+
+    override fun onCharacterDeath(characterName: String, world: World) {
+        uiScope.launch {
+            this@ComposeGameControllerV2.world = world
+            append(
+                TimelineEntry.SystemMessage(
+                    title = "\u2620\uFE0F $characterName has fallen",
+                    details = "$characterName has been slain.",
+                    timestamp = nextTimestamp()
+                )
+            )
+        }
+    }
+
+    override fun onEpilogueGenerated(epilogue: EpilogueResult) {
+        uiScope.launch {
+            append(
+                TimelineEntry.DmNarration(
+                    title = "Epilogue",
+                    narrative = epilogue.narrative,
+                    category = TimelineEntry.DmCategory.SUMMARY,
+                    timestamp = nextTimestamp()
+                )
+            )
         }
     }
 
@@ -385,6 +465,113 @@ class ComposeGameControllerV2(private val uiScope: CoroutineScope) : GameEventLi
                 )
             )
         }
+    }
+
+    fun generateImage(entryId: String) {
+        val idx = timelineEntries.indexOfFirst {
+            it is TimelineEntry.ImagePromptPreview && it.id == entryId
+        }
+        if (idx < 0) return
+        val preview = timelineEntries[idx] as TimelineEntry.ImagePromptPreview
+        if (preview.generating || preview.imageBase64 != null) return
+
+        timelineEntries[idx] = preview.copy(generating = true, error = null)
+
+        uiScope.launch(Dispatchers.IO) {
+            val session = gameSession ?: return@launch
+            try {
+                session.generateImageFromPrompt(sanitizeImagePrompt(preview.prompt))
+                uiScope.launch {
+                    val imgIdx = timelineEntries.indexOfLast { it is TimelineEntry.SceneImage }
+                    if (imgIdx >= 0) {
+                        val img = timelineEntries.removeAt(imgIdx) as TimelineEntry.SceneImage
+                        val curIdx = timelineEntries.indexOfFirst {
+                            it is TimelineEntry.ImagePromptPreview && it.id == entryId
+                        }
+                        if (curIdx >= 0) {
+                            timelineEntries[curIdx] = (timelineEntries[curIdx] as TimelineEntry.ImagePromptPreview)
+                                .copy(generating = false, imageBase64 = img.base64)
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                val cause = if (e is java.util.concurrent.ExecutionException) e.cause ?: e else e
+                val errorMsg = cause.message ?: "Image generation failed"
+                uiScope.launch {
+                    val curIdx = timelineEntries.indexOfFirst {
+                        it is TimelineEntry.ImagePromptPreview && it.id == entryId
+                    }
+                    if (curIdx >= 0) {
+                        timelineEntries[curIdx] = (timelineEntries[curIdx] as TimelineEntry.ImagePromptPreview)
+                            .copy(generating = false, error = errorMsg)
+                    }
+                }
+            }
+        }
+    }
+
+    companion object {
+        private val PROMPT_SANITIZE_MAP = mapOf(
+            "blood" to "crimson energy",
+            "bloody" to "crimson",
+            "bloodied" to "battle-worn",
+            "bleeding" to "glowing with crimson light",
+            "bleed" to "shimmer",
+            "gore" to "debris",
+            "gory" to "intense",
+            "wound" to "mark",
+            "wounded" to "battle-scarred",
+            "wounds" to "battle marks",
+            "stab" to "strike",
+            "stabbed" to "struck",
+            "stabbing" to "striking",
+            "slash" to "sweep",
+            "slashed" to "swept",
+            "slashing" to "sweeping",
+            "impale" to "pierce with light",
+            "impaled" to "pinned by energy",
+            "severed" to "shattered",
+            "sever" to "shatter",
+            "decapitate" to "defeat",
+            "dismember" to "overwhelm",
+            "corpse" to "fallen figure",
+            "corpses" to "fallen figures",
+            "dead body" to "fallen figure",
+            "dead bodies" to "fallen figures",
+            "mutilate" to "defeat",
+            "mutilated" to "defeated",
+            "entrails" to "spectral wisps",
+            "guts" to "ethereal mist",
+            "skull" to "helm",
+            "skulls" to "helms",
+            "kill" to "defeat",
+            "killed" to "defeated",
+            "killing" to "defeating",
+            "murder" to "vanquish",
+            "murdered" to "vanquished",
+            "die" to "fall",
+            "dying" to "fading",
+            "death" to "downfall",
+            "dead" to "fallen",
+            "torture" to "challenge",
+            "torment" to "trial",
+            "scream" to "cry out",
+            "screaming" to "calling out",
+            "naked" to "unarmored",
+            "nude" to "unarmored",
+            "sex" to "romance",
+            "sexual" to "romantic"
+        )
+
+        private val SANITIZE_REGEX = PROMPT_SANITIZE_MAP.keys
+            .sortedByDescending { it.length }
+            .joinToString("|") { Regex.escape(it) }
+            .let { Regex("\\b($it)\\b", RegexOption.IGNORE_CASE) }
+
+        fun sanitizeImagePrompt(prompt: String): String =
+            SANITIZE_REGEX.replace(prompt) { match ->
+                PROMPT_SANITIZE_MAP[match.value.lowercase()] ?: match.value
+            }
     }
 
     // ── Private helpers ─────────────────────────────────────────────────────

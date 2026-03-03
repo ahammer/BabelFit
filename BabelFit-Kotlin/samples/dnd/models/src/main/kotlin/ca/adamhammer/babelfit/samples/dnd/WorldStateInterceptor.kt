@@ -181,7 +181,7 @@ class WorldStateInterceptor(private val isDm: Boolean = true, private val worldP
         val lore = world.lore
 
         // Lightweight calls: skip full world JSON to save tokens
-        val lightweightMethods = setOf("generateSceneImagePrompt", "generateImage")
+        val lightweightMethods = setOf("generateSceneImagePrompt", "generateImage", "generateTeamPortraitPrompt")
         val isLightweight = context.methodName in lightweightMethods
 
         val dmInstructions = if (isDm) {
@@ -231,6 +231,11 @@ class WorldStateInterceptor(private val isDm: Boolean = true, private val worldP
             |$actionPatterns
             |$stagnationWarning
             |
+            |## Leveling Guidance
+            |- Characters start at level 1. Level-ups are rare and meaningful rewards.
+            |- Current party levels: ${worldProvider().party.joinToString(", ") { "${it.name} Lv${it.level}" }}
+            |- Only propose a level-up when a character performs heroically or achieves a major milestone.
+            |
             """.trimMargin()
         } else {
             """
@@ -273,7 +278,7 @@ class WorldStateInterceptor(private val isDm: Boolean = true, private val worldP
         // Player agents get a lean prompt — no full world JSON, no shared rulebook
         if (!isDm) {
             val partySummary = world.party.joinToString("\n") { c ->
-                "- ${c.name} (${c.race} ${c.characterClass}): HP ${c.hp}/${c.maxHp}, Status: ${c.status}"
+                "- ${c.name} (${c.race} ${c.characterClass} Lv${c.level}): HP ${c.hp}/${c.maxHp}, Status: ${c.status}"
             }
             val recentActions = world.actionLog.takeLast(5).joinToString("\n") { "- $it" }
             val relevantWhispers = world.whisperLog.takeLast(5)

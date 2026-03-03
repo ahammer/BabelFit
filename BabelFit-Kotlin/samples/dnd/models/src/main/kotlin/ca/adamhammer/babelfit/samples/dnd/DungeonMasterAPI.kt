@@ -6,6 +6,7 @@ import ca.adamhammer.babelfit.samples.dnd.model.ActionOutcomeProposals
 import ca.adamhammer.babelfit.samples.dnd.model.ActionResult
 import ca.adamhammer.babelfit.samples.dnd.model.BackstoryResult
 import ca.adamhammer.babelfit.samples.dnd.model.CharacterConcept
+import ca.adamhammer.babelfit.samples.dnd.model.EpilogueResult
 import ca.adamhammer.babelfit.samples.dnd.model.RoundOutcomeProposals
 import ca.adamhammer.babelfit.samples.dnd.model.SceneDescription
 import ca.adamhammer.babelfit.model.ImageResult
@@ -153,7 +154,10 @@ interface DungeonMasterAPI {
                 "The combat candidate should include actual combat with damage via partyEffects. " +
                 "The dramatic_twist candidate should be surprising and change the situation fundamentally. " +
                 "If stagnation is detected, ALL candidates should include at least one mutation field. " +
-                "NEVER repeat previous scene descriptions verbatim."
+                "NEVER repeat previous scene descriptions verbatim. " +
+                "LEVELING: If a character performed heroically, achieved a major milestone, " +
+                "or the adventure has progressed significantly, include their name in `levelUps`. " +
+                "Level-ups should be rare and meaningful — roughly once every 4-6 rounds per character."
     )
     @AiResponse(
         description = "Four diverse round outcome candidates with engagement scores and categories",
@@ -162,11 +166,52 @@ interface DungeonMasterAPI {
     fun proposeRoundOutcomes(): Future<RoundOutcomeProposals>
 
     @AiOperation(
+        summary = "Generate Epilogue",
+        description = "The adventure has ended. Generate a dramatic narrative epilogue that wraps up the entire campaign. " +
+                "Reflect on the key moments, turning points, heroic acts, and failures that defined this adventure. " +
+                "Address each party member by name and describe their ultimate fate. " +
+                "Include themes that emerged from the story. " +
+                "End with a teaser about what might come next — or the lasting impact on the world. " +
+                "Style: epic fantasy prose, suitable for reading aloud at the end of a session."
+    )
+    @AiResponse(
+        description = "A dramatic narrative epilogue with character fates and themes",
+        responseClass = EpilogueResult::class
+    )
+    fun generateEpilogue(): Future<EpilogueResult>
+
+    @AiOperation(
+        summary = "Generate Team Portrait Prompt",
+        description = "Generate a detailed visual reference prompt describing the adventuring party as a group portrait. " +
+                "For EACH party member, describe: physical appearance, race, build, hair/eye color, " +
+                "distinctive features, armor/clothing, weapons, and any magical auras or notable gear. " +
+                "This prompt will be used as a visual consistency reference for all future scene images. " +
+                "CRITICAL: The prompt MUST be PG-13 and safe for image generation APIs. " +
+                "NEVER use these words or synonyms: blood, gore, wound, cut, slash, stab, kill, dead, death, " +
+                "corpse, skull, severed, impale, bleed, dismember, mutilate, torture, naked, nude. " +
+                "Instead use safe alternatives: energy, impact, clash, fallen, defeated, spectral, shadow, " +
+                "strike, battle-worn, helm, shattered, vanquished, fading. " +
+                "Incorporate the requested art style into the prompt."
+    )
+    @AiResponse(
+        description = "A detailed visual reference prompt for the party",
+        responseClass = String::class
+    )
+    fun generateTeamPortraitPrompt(
+        @AiParameter(description = "The desired art style for the image (e.g., Anime, Cinematic, Dark Fantasy)")
+        artStyle: String
+    ): Future<String>
+
+    @AiOperation(
         summary = "Generate Scene Image Prompt",
         description = "Generate a cinematic image prompt for the current D&D scene using the latest world state, " +
                 "recent actions, and round summary. Focus on environment, mood, lighting, and key characters. " +
                 "Keep it consistent with the current setting and tone. " +
-                "CRITICAL: The prompt MUST be PG-13 and safe for work. Do NOT include any gore, extreme violence, blood, or sexual content. " +
+                "CRITICAL: The prompt MUST be PG-13 and safe for image generation APIs. " +
+                "NEVER use these words or synonyms: blood, gore, wound, cut, slash, stab, kill, dead, death, " +
+                "corpse, skull, severed, impale, bleed, dismember, mutilate, torture, naked, nude. " +
+                "Instead use safe alternatives: energy, impact, clash, fallen, defeated, spectral, shadow, " +
+                "strike, battle-worn, helm, shattered, vanquished, fading. " +
                 "Focus on action poses, magical effects, and atmosphere instead of violence. " +
                 "Incorporate the requested art style into the prompt."
     )
