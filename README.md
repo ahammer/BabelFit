@@ -173,7 +173,7 @@ graph TD
 
 The `samples-dnd` module is a complete text-based Dungeons & Dragons adventure showing BabelFit's advanced AI patterns. It uses the AI as both the Dungeon Master (DM) and the Player Characters (PCs), showing how to build complex, multi-agent, stateful AI applications.
 
-**[Read the full D&D Case Study](babelfit-java/samples/dnd/README.md)** to learn how it uses, and **[browse example game runs](babelfit-java/samples/dnd/runs/)** to see real session outputs:
+**[Read the full D&D Case Study](BabelFit-Kotlin/samples/dnd/README.md)** to learn how it uses, and **[browse example game runs](https://github.com/ahammer/BabelFit/tree/main/BabelFit-Kotlin/samples/dnd/runs)** to see real session outputs:
 
 - **BabelFit Agents** (`AutonomousAgent`) to simulate independent player decision-making.
 - **Interceptors** (`WorldStateInterceptor`) to dynamically inject real-time game state into the AI's system instructions.
