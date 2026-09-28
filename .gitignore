@@ -10,7 +10,6 @@ local.properties
 # Gradle
 gradle-app.setting
 .gradletasknamecache
-!gradle-wrapper.jar
 !gradle-wrapper.properties
 
 # Compiled class file
@@ -21,6 +20,7 @@ gradle-app.setting
 
 # Package Files
 *.jar
+!gradle-wrapper.jar
 *.war
 *.nar
 *.ear
