@@ -46,6 +46,34 @@ class CachingAdapterTest {
     }
 
     @Test
+    fun `hash collisions between different prompts produce cache misses`() = runBlocking {
+        val inner = MockAdapter.dynamic { ctx, _ -> ctx.methodInvocation }
+        val caching = CachingAdapter(inner, ttlMs = 60_000)
+
+        val first = caching.handleRequest(context(invocation = "Aa"), String::class)
+        val second = caching.handleRequest(context(invocation = "BB"), String::class)
+
+        assertEquals("Aa", first)
+        assertEquals("BB", second)
+        inner.verifyCallCount(2)
+    }
+
+    @Test
+    fun `different result classes use separate cache entries`() = runBlocking {
+        val inner = MockAdapter.dynamic { _, resultClass ->
+            if (resultClass == String::class) "text" else 42
+        }
+        val caching = CachingAdapter(inner, ttlMs = 60_000)
+        val ctx = context()
+
+        assertEquals("text", caching.handleRequest(ctx, String::class))
+        assertEquals(42, caching.handleRequest(ctx, Int::class))
+        assertEquals("text", caching.handleRequest(ctx, String::class))
+        assertEquals(42, caching.handleRequest(ctx, Int::class))
+        inner.verifyCallCount(2)
+    }
+
+    @Test
     fun `expired entries produce cache miss`() = runBlocking {
         val inner = MockAdapter.scripted(SimpleResult("first"), SimpleResult("second"))
         val caching = CachingAdapter(inner, ttlMs = 1) // 1ms TTL
