@@ -1,6 +1,10 @@
 package ca.adamhammer.babelfit.adapters
 
+import ca.adamhammer.babelfit.model.ContentPart
+import ca.adamhammer.babelfit.model.Message
+import ca.adamhammer.babelfit.model.MessageRole
 import ca.adamhammer.babelfit.model.PromptContext
+import ca.adamhammer.babelfit.model.TextPart
 import ca.adamhammer.babelfit.test.MockAdapter
 import ca.adamhammer.babelfit.test.SimpleResult
 import kotlinx.coroutines.flow.toList
@@ -42,6 +46,59 @@ class CachingAdapterTest {
 
         assertEquals("a", r1.value)
         assertEquals("b", r2.value)
+        inner.verifyCallCount(2)
+    }
+
+    @Test
+    fun `hash collisions between different prompts produce cache misses`() = runBlocking {
+        val inner = MockAdapter.dynamic { ctx, _ -> ctx.methodInvocation }
+        val caching = CachingAdapter(inner, ttlMs = 60_000)
+
+        val first = caching.handleRequest(context(invocation = "Aa"), String::class)
+        val second = caching.handleRequest(context(invocation = "BB"), String::class)
+
+        assertEquals("Aa", first)
+        assertEquals("BB", second)
+        inner.verifyCallCount(2)
+    }
+
+    @Test
+    fun `different result classes use separate cache entries`() = runBlocking {
+        val inner = MockAdapter.dynamic { _, resultClass ->
+            if (resultClass == String::class) "text" else 42
+        }
+        val caching = CachingAdapter(inner, ttlMs = 60_000)
+        val ctx = context()
+
+        assertEquals("text", caching.handleRequest(ctx, String::class))
+        assertEquals(42, caching.handleRequest(ctx, Int::class))
+        assertEquals("text", caching.handleRequest(ctx, String::class))
+        assertEquals(42, caching.handleRequest(ctx, Int::class))
+        inner.verifyCallCount(2)
+    }
+
+    @Test
+    fun `cache keys snapshot caller owned collections`() = runBlocking {
+        val memory = mutableMapOf("key" to "Aa")
+        val content = mutableListOf<ContentPart>(TextPart("Aa"))
+        val history = mutableListOf(Message(MessageRole.USER, content))
+        val ctx = context().copy(memory = memory, conversationHistory = history)
+        val original = context().copy(
+            memory = mapOf("key" to "Aa"),
+            conversationHistory = listOf(Message(MessageRole.USER, "Aa"))
+        )
+        val inner = MockAdapter.scripted("original", "changed")
+        val caching = CachingAdapter(inner)
+
+        assertEquals("original", caching.handleRequest(ctx, String::class))
+        memory["key"] = "BB"
+        content[0] = TextPart("BB")
+        history.add(Message(MessageRole.ASSISTANT, "reply"))
+
+        assertEquals("original", caching.handleRequestWithUsage(original, String::class).result)
+        inner.verifyCallCount(1)
+        assertEquals("changed", caching.handleRequest(ctx, String::class))
+        assertEquals("changed", caching.handleRequestWithUsage(ctx, String::class).result)
         inner.verifyCallCount(2)
     }
 

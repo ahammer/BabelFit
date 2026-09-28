@@ -3,6 +3,7 @@ package ca.adamhammer.babelfit.adapters
 import ca.adamhammer.babelfit.interfaces.ApiAdapter
 import ca.adamhammer.babelfit.interfaces.ToolProvider
 import ca.adamhammer.babelfit.model.AdapterResponse
+import ca.adamhammer.babelfit.model.Message
 import ca.adamhammer.babelfit.model.PromptContext
 import kotlinx.coroutines.flow.Flow
 import java.util.concurrent.ConcurrentHashMap
@@ -37,17 +38,26 @@ class CachingAdapter(
         val insertOrder: Long
     )
 
-    private val cache = ConcurrentHashMap<Int, CacheEntry>()
+    private data class CacheKey(
+        val systemInstructions: String,
+        val methodInvocation: String,
+        val memory: Map<String, String>,
+        val conversationHistory: List<Message>,
+        val methodName: String,
+        val resultClass: KClass<*>
+    )
+
+    private val cache = ConcurrentHashMap<CacheKey, CacheEntry>()
     private val insertCounter = AtomicLong(0)
 
-    private fun cacheKey(context: PromptContext): Int {
-        var hash = context.systemInstructions.hashCode()
-        hash = 31 * hash + context.methodInvocation.hashCode()
-        hash = 31 * hash + context.memory.hashCode()
-        hash = 31 * hash + context.conversationHistory.hashCode()
-        hash = 31 * hash + context.methodName.hashCode()
-        return hash
-    }
+    private fun cacheKey(context: PromptContext, resultClass: KClass<*>): CacheKey = CacheKey(
+        systemInstructions = context.systemInstructions,
+        methodInvocation = context.methodInvocation,
+        memory = context.memory.toMap(),
+        conversationHistory = context.conversationHistory.map { it.copy(content = it.content.toList()) },
+        methodName = context.methodName,
+        resultClass = resultClass
+    )
 
     private fun evictExpired() {
         val now = System.currentTimeMillis()
@@ -62,7 +72,7 @@ class CachingAdapter(
     }
 
     @Suppress("UNCHECKED_CAST")
-    private fun <R : Any> getFromCache(key: Int): AdapterResponse<R>? {
+    private fun <R : Any> getFromCache(key: CacheKey): AdapterResponse<R>? {
         val entry = cache[key] ?: return null
         if (entry.expiresAt <= System.currentTimeMillis()) {
             cache.remove(key)
@@ -71,7 +81,7 @@ class CachingAdapter(
         return AdapterResponse(entry.result as R, entry.usage)
     }
 
-    private fun <R : Any> putInCache(key: Int, response: AdapterResponse<R>) {
+    private fun <R : Any> putInCache(key: CacheKey, response: AdapterResponse<R>) {
         evictExpired()
         evictOldestIfNeeded()
         cache[key] = CacheEntry(
@@ -95,7 +105,7 @@ class CachingAdapter(
         context: PromptContext,
         resultClass: KClass<R>
     ): AdapterResponse<R> {
-        val key = cacheKey(context)
+        val key = cacheKey(context, resultClass)
         getFromCache<R>(key)?.let { return it }
         val response = inner.handleRequestWithUsage(context, resultClass)
         putInCache(key, response)
