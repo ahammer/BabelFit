@@ -53,8 +53,8 @@ class CachingAdapter(
     private fun cacheKey(context: PromptContext, resultClass: KClass<*>): CacheKey = CacheKey(
         systemInstructions = context.systemInstructions,
         methodInvocation = context.methodInvocation,
-        memory = context.memory,
-        conversationHistory = context.conversationHistory,
+        memory = context.memory.toMap(),
+        conversationHistory = context.conversationHistory.map { it.copy(content = it.content.toList()) },
         methodName = context.methodName,
         resultClass = resultClass
     )
