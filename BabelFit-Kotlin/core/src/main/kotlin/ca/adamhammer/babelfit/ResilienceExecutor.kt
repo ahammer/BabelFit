@@ -57,15 +57,7 @@ class ResilienceExecutor(
                 val response = executeWithTimeout(adapter, contextWithAttempt, resultClass, toolProviders)
                 accumulatedUsage = mergeUsage(accumulatedUsage, response.usage)
 
-                val validator = resilience.resultValidator
-                if (validator != null) {
-                    val validationResult = validator(response.result)
-                    if (validationResult is ValidationResult.Invalid) {
-                        throw ResultValidationException(validationResult.reason, contextWithAttempt)
-                    } else if (validationResult == false) { // For backwards compatibility if validator returns Boolean
-                        throw ResultValidationException("Result validation failed on attempt $attempt", contextWithAttempt)
-                    }
-                }
+                validateResult(response.result, attempt, contextWithAttempt)
 
                 notifyAttemptComplete(currentContext, attempt, response.result, attemptStartMs, response.usage)
                 notifyComplete(currentContext, response.result, startMs, accumulatedUsage)
@@ -126,9 +118,13 @@ class ResilienceExecutor(
             try {
                 val response = executeWithTimeout(fallback, contextWithAttempt, resultClass, toolProviders)
                 accumulatedUsage = mergeUsage(accumulatedUsage, response.usage)
+                validateResult(response.result, fallbackAttempt, contextWithAttempt)
                 notifyAttemptComplete(currentContext, fallbackAttempt, response.result, attemptStartMs, response.usage)
                 notifyComplete(currentContext, response.result, startMs, accumulatedUsage)
                 return response.result
+            } catch (e: CancellationException) {
+                notifyAttemptError(currentContext, fallbackAttempt, e, attemptStartMs)
+                throw e
             } catch (e: Exception) {
                 notifyAttemptError(currentContext, fallbackAttempt, e, attemptStartMs)
                 val ex = BabelFitException("All attempts failed including fallback", e, currentContext)
@@ -140,6 +136,16 @@ class ResilienceExecutor(
         val ex = BabelFitException("All $maxAttempts attempt(s) failed", lastException, currentContext)
         notifyError(currentContext, ex, startMs)
         throw ex
+    }
+
+    private fun validateResult(result: Any, attempt: Int, context: PromptContext) {
+        val validator = resilience.resultValidator ?: return
+        val validationResult = validator(result)
+        if (validationResult is ValidationResult.Invalid) {
+            throw ResultValidationException(validationResult.reason, context)
+        } else if (validationResult == false) { // For backwards compatibility if validator returns Boolean
+            throw ResultValidationException("Result validation failed on attempt $attempt", context)
+        }
     }
 
     private suspend fun retryDelay(attempt: Int, maxAttempts: Int) {
