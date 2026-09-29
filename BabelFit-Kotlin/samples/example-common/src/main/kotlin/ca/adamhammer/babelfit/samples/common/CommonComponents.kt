@@ -80,15 +80,18 @@ fun AvatarCircle(name: String, color: Color, size: Int = 32) {
 
 // ── VendorSelector ──────────────────────────────────────────────────────────
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun VendorSelector(
     vendors: List<Vendor>,
     selected: Vendor,
-    onSelect: (Vendor) -> Unit
+    onSelect: (Vendor) -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    Row(
+    FlowRow(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
-        modifier = Modifier.fillMaxWidth()
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = modifier
     ) {
         vendors.forEach { vendor ->
             val available = vendor.isAvailable()
@@ -104,11 +107,13 @@ fun VendorSelector(
                 Column {
                     Text(
                         vendor.displayName,
+                        softWrap = false,
                         color = if (available) DimText else DimText.copy(alpha = 0.3f)
                     )
                     if (!available) {
                         Text(
                             vendor.envVarName + " not set",
+                            softWrap = false,
                             style = MaterialTheme.typography.overline,
                             color = ErrorColor.copy(alpha = 0.6f)
                         )

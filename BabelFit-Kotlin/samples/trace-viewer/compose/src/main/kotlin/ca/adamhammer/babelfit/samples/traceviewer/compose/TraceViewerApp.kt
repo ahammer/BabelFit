@@ -8,6 +8,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ca.adamhammer.babelfit.samples.common.*
@@ -58,6 +59,7 @@ private fun WelcomeScreen(controller: ComposeTraceController) {
                     color = MaterialTheme.colors.primary
                 )
                 VendorSelector(
+                    modifier = Modifier.fillMaxWidth(),
                     vendors = Vendor.entries,
                     selected = controller.vendor,
                     onSelect = {
@@ -136,11 +138,19 @@ private fun Toolbar(controller: ComposeTraceController) {
                 Text("Open Trace", color = BrightText)
             }
 
-            Text(controller.traceFileName, color = DimText, fontSize = 13.sp)
+            Text(
+                controller.traceFileName,
+                modifier = Modifier.widthIn(max = 160.dp),
+                color = DimText,
+                fontSize = 13.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
 
             Spacer(Modifier.weight(1f))
 
             VendorSelector(
+                modifier = Modifier.widthIn(max = 430.dp),
                 vendors = Vendor.entries,
                 selected = controller.vendor,
                 onSelect = {
