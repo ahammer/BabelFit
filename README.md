@@ -47,15 +47,15 @@ BabelFit is organized into a core library, vendor adapters, extensions, and samp
 
 | Module | Description |
 | -------- | ------------- |
-| [`babelfit-core`](babelfit-java/core/README.md) | Core library: annotations, proxy, context pipeline, routing adapter, tool-calling abstractions, resilience. Zero AI-provider dependencies. |
-| [`babelfit-openai`](babelfit-java/vendor/openai/README.md) | OpenAI adapter: sends `PromptContext` to OpenAI with native tool-calling support. |
-| [`babelfit-gemini`](babelfit-java/vendor/gemini/README.md) | Google Gemini adapter: sends `PromptContext` to Gemini with native tool-calling support. |
-| [`babelfit-claude`](babelfit-java/vendor/claude/README.md) | Anthropic Claude adapter: sends `PromptContext` to Claude with native tool-calling support. |
-| [`babelfit-mcp`](babelfit-java/ext/mcp/README.md) | MCP integration: consume MCP server tools via `McpToolProvider`, expose BabelFit interfaces as MCP servers via `BabelFitMcpServer`. |
-| [`babelfit-agents`](babelfit-java/ext/agents/README.md) | Agent abstractions: `AutonomousAgent`, `DecidingAgent`, `AgentDispatcher` for multi-step AI workflows. |
-| [`babelfit-test`](babelfit-java/ext/test/README.md) | Test utilities: `MockAdapter`, `MockToolProvider`, prompt assertions, test fixtures, `babelFitTest<T>()` / `babelFitStub<T>()` helpers. |
-| [`babelfit-debug`](babelfit-java/ext/debug/README.md) | Debug adapter: wraps any adapter and writes request/response markdown files for post-hoc inspection. |
-| [`samples-dnd`](babelfit-java/samples/dnd/README.md) | Sample app: a text-based D&D adventure with the AI as Dungeon Master. |
+| [`babelfit-core`](BabelFit-Kotlin/core/README.md) | Core library: annotations, proxy, context pipeline, routing adapter, tool-calling abstractions, resilience. Zero AI-provider dependencies. |
+| [`babelfit-openai`](BabelFit-Kotlin/vendor/openai/README.md) | OpenAI adapter: sends `PromptContext` to OpenAI with native tool-calling support. |
+| [`babelfit-gemini`](BabelFit-Kotlin/vendor/gemini/README.md) | Google Gemini adapter: sends `PromptContext` to Gemini with native tool-calling support. |
+| [`babelfit-claude`](BabelFit-Kotlin/vendor/claude/README.md) | Anthropic Claude adapter: sends `PromptContext` to Claude with native tool-calling support. |
+| [`babelfit-mcp`](BabelFit-Kotlin/ext/mcp/README.md) | MCP integration: consume MCP server tools via `McpToolProvider`, expose BabelFit interfaces as MCP servers via `BabelFitMcpServer`. |
+| [`babelfit-agents`](BabelFit-Kotlin/ext/agents/README.md) | Agent abstractions: `AutonomousAgent`, `DecidingAgent`, `AgentDispatcher` for multi-step AI workflows. |
+| [`babelfit-test`](BabelFit-Kotlin/ext/test/README.md) | Test utilities: `MockAdapter`, `MockToolProvider`, prompt assertions, test fixtures, `babelFitTest<T>()` / `babelFitStub<T>()` helpers. |
+| [`babelfit-debug`](BabelFit-Kotlin/ext/debug/README.md) | Debug adapter: wraps any adapter and writes request/response markdown files for post-hoc inspection. |
+| [`samples-dnd`](BabelFit-Kotlin/samples/dnd/README.md) | Sample app: a text-based D&D adventure with the AI as Dungeon Master. |
 
 ## Installation
 
@@ -63,7 +63,7 @@ Clone and build from source:
 
 ```bash
 git clone https://github.com/adamhammer/BabelFit.git
-cd BabelFit/babelfit-java
+cd BabelFit/BabelFit-Kotlin
 ./gradlew build
 ```
 
