@@ -36,4 +36,4 @@ fun main() = runBlocking {
 
 ## Output
 
-`save()` writes one JSON trace export to `debug/<name>.btrace.json` relative to the current working directory. The example writes `debug/offline-example.btrace.json`; with the default session name, the filename includes a timestamp. The export contains a version and a list of session, request, attempt, and tool-call spans, including their parent IDs, timing, and captured context or results where available. It can be parsed as JSON with a standard JSON parser.
+`save()` writes one JSON trace export to `debug/<name>.btrace.json` relative to the current working directory. The example writes `debug/offline-example.btrace.json`; with the default session name, the filename includes a timestamp. The export contains a list of session, request, attempt, and tool-call spans, including their parent IDs, timing, and captured context or results where available. It can be parsed as JSON with a standard JSON parser.
