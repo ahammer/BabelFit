@@ -12,8 +12,10 @@ The `babelfit-openai` module provides an `ApiAdapter` implementation for OpenAI'
 ## Usage
 
 ```kotlin
+import com.openai.models.ChatModel
+
 val instance = babelFit<MyAPI> {
-    adapter(OpenAiAdapter(model = "gpt-4o"))
+    adapter(OpenAiAdapter(model = ChatModel.GPT_4O))
 }
 ```
 
