@@ -62,7 +62,7 @@ BabelFit is organized into a core library, vendor adapters, extensions, and samp
 Clone and build from source:
 
 ```bash
-git clone https://github.com/adamhammer/BabelFit.git
+git clone https://github.com/ahammer/BabelFit.git
 cd BabelFit/BabelFit-Kotlin
 ./gradlew build
 ```
