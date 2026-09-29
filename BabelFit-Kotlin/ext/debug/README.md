@@ -1,22 +1,39 @@
 # BabelFit Debug
 
-The `babelfit-debug` module provides a `DebugAdapter` that wraps any other `ApiAdapter` and writes all requests and responses to markdown files on disk. This is useful for post-hoc inspection of what the AI actually saw and generated.
+The `babelfit-debug` module records BabelFit request traces as `.btrace.json` files.
 
 ## Usage
 
+Wrap the adapter with `TracingAdapter` and register `TracingRequestListener` on the builder. The adapter records tool calls; the listener records request and attempt spans.
+
+This offline example uses the built-in `StubAdapter`, so it makes no provider calls:
+
 ```kotlin
-val instance = babelFit<MyAPI> {
-    // Wrap your real adapter in a DebugAdapter
-    adapter(DebugAdapter(OpenAiAdapter()))
+import ca.adamhammer.babelfit.adapters.StubAdapter
+import ca.adamhammer.babelfit.annotations.AiOperation
+import ca.adamhammer.babelfit.babelFit
+import ca.adamhammer.babelfit.debug.trace.TraceSession
+import ca.adamhammer.babelfit.debug.trace.TracingAdapter
+import ca.adamhammer.babelfit.debug.trace.TracingRequestListener
+import kotlinx.coroutines.runBlocking
+
+interface GreetingApi {
+    @AiOperation(description = "Return a greeting")
+    suspend fun greet(): String
+}
+
+fun main() = runBlocking {
+    val traceSession = TraceSession(name = "offline-example")
+    val instance = babelFit<GreetingApi> {
+        adapter(TracingAdapter(StubAdapter(), traceSession))
+        listener(TracingRequestListener(traceSession))
+    }
+
+    println(instance.api.greet())
+    traceSession.save()
 }
 ```
 
 ## Output
 
-By default, `DebugAdapter` creates a `debug/` directory in the current working directory. For every Shimmer call, it writes a markdown file containing:
-
-1. The full `PromptContext` (system instructions, method invocation, memory, properties)
-2. The raw JSON response from the AI provider
-3. The deserialized Kotlin object returned to your application
-
-This allows you to easily audit the exact prompts being sent and the exact responses being received.
+`save()` writes one JSON trace export to `debug/<name>.btrace.json` relative to the current working directory. The example writes `debug/offline-example.btrace.json`; with the default session name, the filename includes a timestamp. The export contains a version and a list of session, request, attempt, and tool-call spans, including their parent IDs, timing, and captured context or results where available. It can be parsed as JSON with a standard JSON parser.

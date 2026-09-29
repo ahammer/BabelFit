@@ -54,7 +54,7 @@ BabelFit is organized into a core library, vendor adapters, extensions, and samp
 | [`babelfit-mcp`](BabelFit-Kotlin/ext/mcp/README.md) | MCP integration: consume MCP server tools via `McpToolProvider`, expose BabelFit interfaces as MCP servers via `BabelFitMcpServer`. |
 | [`babelfit-agents`](BabelFit-Kotlin/ext/agents/README.md) | Agent abstractions: `AutonomousAgent`, `DecidingAgent`, `AgentDispatcher` for multi-step AI workflows. |
 | [`babelfit-test`](BabelFit-Kotlin/ext/test/README.md) | Test utilities: `MockAdapter`, `MockToolProvider`, prompt assertions, test fixtures, `babelFitTest<T>()` / `babelFitStub<T>()` helpers. |
-| [`babelfit-debug`](BabelFit-Kotlin/ext/debug/README.md) | Debug adapter: wraps any adapter and writes request/response markdown files for post-hoc inspection. |
+| [`babelfit-debug`](BabelFit-Kotlin/ext/debug/README.md) | Tracing adapter and request listener: capture request, attempt, and tool-call spans in `.btrace.json` exports. |
 | [`samples-dnd`](BabelFit-Kotlin/samples/dnd/README.md) | Sample app: a text-based D&D adventure with the AI as Dungeon Master. |
 
 ## Installation
