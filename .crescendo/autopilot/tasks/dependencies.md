@@ -30,8 +30,8 @@ Focus: {{ issue.research.focus }}
    (`build/reports/jacoco`).
 2. List the declared versions (Gradle wrapper, Kotlin, plugins, libraries) and compare them with the
    latest stable releases.
-3. For each worthwhile upgrade, try it in a scratch branch you never push and record whether the build
-   passes; file one issue per upgrade with that evidence.
+3. For each worthwhile upgrade, try it in a scratch copy under `.scratch/` and record whether the
+   build passes; file one issue per upgrade with that evidence. Leave tracked source unchanged.
 
 Keep scratch files under `.scratch/` in the workspace and delete them before finishing. Stop every
 process you started.
